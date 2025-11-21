@@ -1,9 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from datetime import timedelta
 from typing import Annotated
+import logging
 
 from database import get_db, engine, Base
 from models import User
@@ -15,9 +17,17 @@ from auth import (
     get_current_user,
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
+from ml_models.model_loader import ModelManager, run_inference
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
+
+# Initialize model manager
+model_manager = ModelManager()
 
 app = FastAPI(title="License Plate Recognition API", version="1.0.0")
 
@@ -29,6 +39,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Load ML model at application startup"""
+    logger.info("Starting application and loading ML model...")
+    success = model_manager.load_model()
+    if success:
+        logger.info("✓ ML model loaded successfully!")
+    else:
+        logger.warning("⚠ ML model failed to load. Inference endpoint will not work.")
+        logger.warning("Please ensure a .keras model file is present in the 'ml_models' directory.")
 
 
 @app.get("/")
@@ -121,6 +143,78 @@ def protected_route(current_user: User = Depends(get_current_user)):
         "message": f"Hello {current_user.username}! This is a protected route.",
         "user_id": current_user.id,
         "email": current_user.email
+    }
+
+
+@app.post("/api/inference")
+async def predict_license_plate(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Upload a license plate image and get the reconstructed version using Pix2Pix model
+    
+    - **file**: Image file (JPEG, PNG) containing a license plate
+    - Returns: Reconstructed image as PNG
+    """
+    # Validate file type
+    if not file.content_type.startswith('image/'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File must be an image (JPEG, PNG, etc.)"
+        )
+    
+    # Check file size (max 10MB)
+    contents = await file.read()
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Image file too large. Maximum size is 10MB."
+        )
+    
+    # Check if model is loaded
+    if not model_manager.is_loaded():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="ML model not loaded. Please contact administrator."
+        )
+    
+    try:
+        logger.info(f"Processing inference request from user {current_user.username}")
+        logger.info(f"Uploaded file: {file.filename}, size: {len(contents)} bytes")
+        
+        # Run inference
+        result_image = run_inference(contents)
+        
+        logger.info(f"Inference successful for user {current_user.username}")
+        
+        # Return the reconstructed image as PNG
+        return Response(
+            content=result_image,
+            media_type="image/png",
+            headers={
+                "Content-Disposition": f"inline; filename=reconstructed_{file.filename}",
+                "X-User-Id": str(current_user.id)
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Error during inference: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error processing image: {str(e)}"
+        )
+
+
+@app.get("/api/model/status")
+def model_status(current_user: User = Depends(get_current_user)):
+    """Check if the ML model is loaded and ready"""
+    is_loaded = model_manager.is_loaded()
+    
+    return {
+        "model_loaded": is_loaded,
+        "model_path": model_manager._model_path if is_loaded else None,
+        "status": "ready" if is_loaded else "not_loaded"
     }
 
 
