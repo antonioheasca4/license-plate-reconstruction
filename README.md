@@ -15,13 +15,22 @@ license-plate-reconstruction/
 │   ├── requirements.txt    # Python dependencies
 │   ├── Dockerfile          # Backend Docker image
 │   ├── .env               # Environment variables
-│   └── .env.example       # Example environment variables
+│   ├── .env.example       # Example environment variables
+│   └── ml_models/          # ML model directory
+│       ├── model_loader.py # Pix2Pix model loading & inference
+│       ├── *.keras         # Trained model (any .keras file)
+│       └── README.md       # Model documentation
 │
 ├── frontend/               # React frontend
 │   ├── src/
 │   │   ├── components/     # React components
+│   │   │   ├── PrivateRoute.jsx
+│   │   │   └── ImageUploader.jsx  # Upload & reconstruction UI
 │   │   ├── contexts/       # Context providers (Auth)
 │   │   ├── pages/          # Page components
+│   │   │   ├── Login.jsx
+│   │   │   ├── Register.jsx
+│   │   │   └── Dashboard.jsx  # Main app with upload
 │   │   ├── App.jsx         # Main app component
 │   │   └── main.jsx        # Entry point
 │   ├── package.json        # Node dependencies
@@ -47,12 +56,16 @@ license-plate-reconstruction/
 - ✅ **User Registration & Login**: Complete user management system
 - ✅ **Protected Routes**: Frontend and backend route protection
 - ✅ **PostgreSQL Database**: Robust relational database with SQLAlchemy ORM (Dockerized)
+- ✅ **License Plate Reconstruction**: Pix2Pix deep learning model for image enhancement
+- ✅ **Image Upload**: Drag & drop or click to upload license plate images
+- ✅ **Real-time Inference**: Process images and view reconstructed results instantly
+- ✅ **Side-by-Side Comparison**: Visual comparison of original vs reconstructed images
 - ✅ **Modern UI**: Responsive React interface with custom styling
 - ✅ **CORS Configured**: Secure cross-origin resource sharing
 - ✅ **Docker Support**: Full containerization with docker-compose
 - ✅ **Automation Scripts**: One-command start/stop for development
-- ✅ **Hot Reload**: Instant updates during development
-- 🔄 **Coming Soon**: Image upload, Pix2Pix model integration, fine-tuning capabilities
+- ✅ **Hot Reload**: Instant updates during development (frontend & backend)
+- 🔄 **Coming Soon**: OCR text extraction, results history, model fine-tuning
 
 ## 🚀 Prerequisites
 
@@ -60,7 +73,7 @@ Before you begin, ensure you have the following installed:
 
 ### Required for Development (start.ps1)
 - **Docker Desktop** ([Download](https://www.docker.com/products/docker-desktop/)) - For PostgreSQL container
-- **Python 3.9+** ([Download](https://www.python.org/downloads/)) - For backend
+- **Python 3.9+** ([Download](https://www.python.org/downloads/)) - For backend (requires TensorFlow 2.20.0)
 - **Node.js 18+** and npm ([Download](https://nodejs.org/)) - For frontend
 
 ### Required for Production (docker-compose up)
@@ -97,6 +110,11 @@ copy .env.example .env
 # DATABASE_URL=postgresql://lpr_user:lpr_password_change_in_production@localhost:5432/lpr_database
 ```
 
+**ML Dependencies Included**:
+- TensorFlow 2.20.0 (Pix2Pix model)
+- Pillow 10.2.0 (Image processing)
+- NumPy 1.26.3 (Array operations)
+
 **Important**: For production, generate a secure SECRET_KEY:
 
 ```powershell
@@ -132,6 +150,28 @@ npm install
 # Create .env file from example
 copy .env.example .env
 ```
+
+### 5. Add ML Model
+
+Place your trained Pix2Pix model in the backend:
+
+```powershell
+# Copy any .keras model file to:
+backend/ml_models/
+
+# Examples:
+backend/ml_models/generator_256x128noSkew.keras
+backend/ml_models/model.keras
+backend/ml_models/pix2pix_generator.keras
+```
+
+**Model Requirements**:
+- Format: `.keras` (TensorFlow/Keras)
+- Input shape: (batch, 128, 256, 3)
+- Output shape: (batch, 128, 256, 3)
+- Type: Pix2Pix Generator for license plate reconstruction
+
+The first `.keras` file found will be automatically loaded at backend startup.
 
 ## 🎯 Running the Application
 
@@ -172,7 +212,7 @@ docker-compose up --build
 docker-compose down
 ```
 
-## 🧪 Testing the Authentication
+## 🧪 Testing the Application
 
 ### 1. Register a New User
 
@@ -180,7 +220,7 @@ docker-compose down
 - Click on "Register"
 - Fill in the form:
   - Email: `test@example.com`
-  - Username: `testuser`
+  - Username: `testuser` (no @ symbol allowed)
   - Password: `password123`
 - Click "Register"
 
@@ -191,11 +231,26 @@ docker-compose down
 - Click "Login"
 - You'll be redirected to the Dashboard
 
-### 3. Test Protected Routes
+### 3. Upload and Reconstruct License Plate Images
 
-Once logged in, you can:
+Once logged in:
+1. **Upload an Image**:
+   - Drag & drop or click to select a license plate image
+   - Supported formats: PNG, JPG, JPEG (max 10MB)
+   
+2. **View Reconstruction**:
+   - Click "Reconstruct Image" button
+   - Wait for Pix2Pix model to process (few seconds)
+   - View side-by-side comparison of original vs reconstructed image
+
+3. **Upload Another**:
+   - Click "Upload Another Image" to process more plates
+
+### 4. Test Features
+
 - View your profile information on the Dashboard
-- The dashboard shows user details fetched from the backend
+- Upload multiple license plate images for reconstruction
+- Try degraded/blurry images to see reconstruction quality
 - Try logging out and accessing `/dashboard` directly (you'll be redirected to login)
 
 ## 📡 API Endpoints
@@ -210,6 +265,8 @@ Once logged in, you can:
 
 - `GET /api/auth/me` - Get current user information
 - `GET /api/protected` - Example protected route
+- `POST /api/inference` - Upload and reconstruct license plate image
+- `GET /api/model/status` - Check ML model status
 
 ### Using the API (cURL Examples)
 
@@ -244,6 +301,29 @@ $headers = @{
 Invoke-RestMethod -Uri "http://localhost:8000/api/auth/me" -Headers $headers
 ```
 
+**Upload Image for Reconstruction:**
+```powershell
+$token = "your_access_token_here"
+$headers = @{
+    Authorization = "Bearer $token"
+}
+
+$filePath = "path/to/license_plate.jpg"
+$boundary = [System.Guid]::NewGuid().ToString()
+
+Invoke-RestMethod -Uri "http://localhost:8000/api/inference" -Method Post -Headers $headers -InFile $filePath -ContentType "multipart/form-data"
+```
+
+**Check Model Status:**
+```powershell
+$token = "your_access_token_here"
+$headers = @{
+    Authorization = "Bearer $token"
+}
+
+Invoke-RestMethod -Uri "http://localhost:8000/api/model/status" -Headers $headers
+```
+
 ## 🔒 Security Features
 
 - **Password Hashing**: Bcrypt algorithm for secure password storage
@@ -263,6 +343,9 @@ Invoke-RestMethod -Uri "http://localhost:8000/api/auth/me" -Headers $headers
 - **python-jose** - JWT token creation and validation
 - **passlib** - Password hashing library
 - **uvicorn** - ASGI server
+- **TensorFlow 2.20.0** - Deep learning framework for Pix2Pix model
+- **Pillow** - Image processing library
+- **NumPy** - Numerical computing
 
 ### Frontend
 - **React 18** - UI library
@@ -287,14 +370,16 @@ Invoke-RestMethod -Uri "http://localhost:8000/api/auth/me" -Headers $headers
 
 ## 🔄 Next Steps
 
-The authentication foundation is complete! Here's what's coming next:
+The core features are complete! Here's what's coming next:
 
-1. **Image Upload Feature**: Allow users to upload license plate images
-2. **Pix2Pix Model Integration**: Load and run the TensorFlow model for image reconstruction
-3. **OCR Integration**: Extract text from license plates
-4. **Results History**: Store and display recognition results
-5. **Fine-tuning Interface**: Admin panel for model retraining
-6. **WebSocket Support**: Real-time streaming for camera simulation
+1. ✅ ~~**Image Upload Feature**~~ - Complete! Upload license plate images via dashboard
+2. ✅ ~~**Pix2Pix Model Integration**~~ - Complete! Model loaded and running inference
+3. **OCR Integration**: Extract and display text from license plates
+4. **Results History**: Store and display recognition history in database
+5. **Fine-tuning Interface**: Admin panel for model retraining with new data
+6. **Batch Processing**: Upload and process multiple images simultaneously
+7. **WebSocket Support**: Real-time streaming for camera simulation
+8. **Performance Metrics**: Display model confidence and processing time
 
 ## 🐛 Troubleshooting
 
@@ -309,6 +394,12 @@ The authentication foundation is complete! Here's what's coming next:
 **Import errors:**
 - Ensure virtual environment is activated
 - Run `pip install -r requirements.txt` again
+- TensorFlow installation may take time (331.9 MB)
+
+**Model not loading:**
+- Ensure at least one `.keras` file is in `backend/ml_models/`
+- Check backend logs for "Found model file: ml_models/..." and "✓ ML model loaded successfully!"
+- Verify model file is not corrupted
 
 ### Frontend Issues
 

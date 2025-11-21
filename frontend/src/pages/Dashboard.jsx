@@ -1,5 +1,6 @@
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import ImageUploader from '../components/ImageUploader';
 import './Dashboard.css';
 
 const Dashboard = () => {
@@ -34,16 +35,19 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* Image Upload and Reconstruction Component */}
+        <ImageUploader />
+
         <div className="info-card">
-          <h3>🚀 Next Steps</h3>
-          <p>The authentication system is fully functional! You can now:</p>
+          <h3>ℹ️ About License Plate Reconstruction</h3>
+          <p>This system uses a Pix2Pix deep learning model to reconstruct and enhance license plate images.</p>
           <ul>
-            <li>Upload license plate images</li>
-            <li>Run image reconstruction using Pix2Pix model</li>
-            <li>View recognition history</li>
-            <li>Fine-tune the model (admin only)</li>
+            <li>Upload a license plate image (degraded, blurry, or low quality)</li>
+            <li>The Pix2Pix model will reconstruct it to improve clarity</li>
+            <li>Compare the original and reconstructed images side-by-side</li>
+            <li>Model size: 256x128 pixels (automatically resized)</li>
           </ul>
-          <p className="note">These features will be implemented in the next phase.</p>
+          <p className="note">Model: Auto-detected .keras file in ml_models/</p>
         </div>
       </div>
     </div>
