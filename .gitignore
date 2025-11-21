@@ -1,0 +1,49 @@
+# Docker
+postgres_data/
+.env.docker
+
+# SQLite (no longer used)
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Frontend
+node_modules/
+dist/
+build/
+.cache/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
