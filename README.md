@@ -75,6 +75,7 @@ Before you begin, ensure you have the following installed:
 - **Docker Desktop** ([Download](https://www.docker.com/products/docker-desktop/)) - For PostgreSQL container
 - **Python 3.9+** ([Download](https://www.python.org/downloads/)) - For backend (requires TensorFlow 2.20.0)
 - **Node.js 18+** and npm ([Download](https://nodejs.org/)) - For frontend
+- **Git LFS** ([Download](https://git-lfs.github.com/)) - For ML model files (185 MB)
 
 ### Required for Production (docker-compose up)
 - **Docker Desktop** only - All services run in containers
@@ -87,6 +88,8 @@ Before you begin, ensure you have the following installed:
 git clone https://github.com/antonioheasca4/license-plate-reconstruction.git
 cd license-plate-reconstruction
 ```
+
+**Note**: The ML model (185 MB) will be automatically downloaded via Git LFS during clone.
 
 ### 2. Backend Setup
 
