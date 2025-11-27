@@ -18,6 +18,7 @@ from auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
 from ml_models.model_loader import ModelManager, run_inference
+from ocr_service import OCRManager, run_ocr
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -28,6 +29,9 @@ Base.metadata.create_all(bind=engine)
 
 # Initialize model manager
 model_manager = ModelManager()
+
+# Initialize OCR manager
+ocr_manager = OCRManager()
 
 app = FastAPI(title="License Plate Recognition API", version="1.0.0")
 
@@ -43,14 +47,23 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
-    """Load ML model at application startup"""
-    logger.info("Starting application and loading ML model...")
+    """Load ML models at application startup"""
+    logger.info("Starting application and loading ML models...")
+    
+    # Load Pix2Pix model
     success = model_manager.load_model()
     if success:
-        logger.info("✓ ML model loaded successfully!")
+        logger.info("✓ Pix2Pix model loaded successfully!")
     else:
-        logger.warning("⚠ ML model failed to load. Inference endpoint will not work.")
+        logger.warning("⚠ Pix2Pix model failed to load. Inference endpoint will not work.")
         logger.warning("Please ensure a .keras model file is present in the 'ml_models' directory.")
+    
+    # Load OCR model
+    ocr_success = ocr_manager.load_model()
+    if ocr_success:
+        logger.info("✓ OCR model loaded successfully!")
+    else:
+        logger.warning("⚠ OCR model failed to load. OCR endpoint will not work.")
 
 
 @app.get("/")
@@ -206,15 +219,65 @@ async def predict_license_plate(
         )
 
 
+@app.post("/api/ocr")
+async def ocr_image(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Run OCR on uploaded license plate image
+    
+    - **file**: Image file (PNG, JPG, JPEG)
+    - Returns: OCR text result
+    """
+    # Validate file type
+    if not file.content_type.startswith('image/'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File must be an image (PNG, JPG, JPEG)"
+        )
+    
+    # Read file contents
+    contents = await file.read()
+    
+    # Validate file size (max 10MB)
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="File size exceeds 10MB limit"
+        )
+    
+    try:
+        logger.info(f"Processing OCR request from user {current_user.username}")
+        logger.info(f"Uploaded file: {file.filename}, size: {len(contents)} bytes")
+        
+        # Run OCR
+        result = run_ocr(contents)
+        
+        logger.info(f"OCR successful for user {current_user.username}: {result['text']}")
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error during OCR: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error processing OCR: {str(e)}"
+        )
+
+
 @app.get("/api/model/status")
 def model_status(current_user: User = Depends(get_current_user)):
-    """Check if the ML model is loaded and ready"""
-    is_loaded = model_manager.is_loaded()
+    """Check if the ML models are loaded and ready"""
+    pix2pix_loaded = model_manager.is_loaded()
+    ocr_loaded = ocr_manager.is_loaded()
     
     return {
-        "model_loaded": is_loaded,
-        "model_path": model_manager._model_path if is_loaded else None,
-        "status": "ready" if is_loaded else "not_loaded"
+        "pix2pix_loaded": pix2pix_loaded,
+        "pix2pix_path": model_manager._model_path if pix2pix_loaded else None,
+        "ocr_loaded": ocr_loaded,
+        "ocr_model": "cct-xs-v1-global-model" if ocr_loaded else None,
+        "status": "ready" if (pix2pix_loaded and ocr_loaded) else "partial" if (pix2pix_loaded or ocr_loaded) else "not_loaded"
     }
 
 

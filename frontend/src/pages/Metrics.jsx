@@ -31,9 +31,6 @@ const Metrics = () => {
         {active === 'psnr' && <PDFViewer src={`${reportsBase}/psnr_ssim_results.pdf`} />}
       </div>
 
-      <div className="metrics-note">
-        <p>If the PDFs don't load, make sure the files are placed in <code>frontend/public/reports/</code> and named <code>ocr_results.pdf</code> and <code>psnr_ssim_results.pdf</code>.</p>
-      </div>
     </div>
   );
 };

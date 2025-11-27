@@ -47,7 +47,6 @@ const Dashboard = () => {
             <li>Compare the original and reconstructed images side-by-side</li>
             <li>Model size: 256x128 pixels (automatically resized)</li>
           </ul>
-          <p className="note">Model: Auto-detected .keras file in ml_models/</p>
           <p className="note"><a href="/metrics">View model metrics & reports</a></p>
         </div>
       </div>

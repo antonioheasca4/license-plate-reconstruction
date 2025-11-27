@@ -12,3 +12,4 @@ pydantic[email]==2.5.3
 tensorflow==2.20.0
 pillow==10.2.0
 numpy==1.26.3
+fast-plate-ocr[onnx]==1.0.2

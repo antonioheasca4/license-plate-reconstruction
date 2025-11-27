@@ -17,8 +17,8 @@
 ## 🎯 Prezentare Generală
 
 **Numele Proiectului:** License Plate Reconstruction System  
-**Scop:** Aplicație web full-stack pentru recunoașterea și reconstrucția plăcuțelor de înmatriculare folosind deep learning (Pix2Pix model)  
-**Stadiu Actual:** Sistem de autentificare complet funcțional, pregătit pentru integrarea modelului ML
+**Scop:** Aplicație web full-stack pentru recunoașterea și reconstrucția plăcuțelor de înmatriculare folosind deep learning (Pix2Pix model + fast-plate-ocr)  
+**Stadiu Actual:** Sistem complet funcțional cu autentificare, reconstrucție imagini și OCR
 
 ### Caracteristici Principale
 - ✅ Autentificare JWT completă (login/register/logout)
@@ -26,7 +26,11 @@
 - ✅ Validare complexă a datelor
 - ✅ Management securizat al sesiunilor
 - ✅ Interfață responsive modernă
-- 🔄 În dezvoltare: încărcare imagini, reconstrucție Pix2Pix, fine-tuning model
+- ✅ Upload și reconstrucție imagini cu Pix2Pix
+- ✅ OCR pentru extragere text din plăcuțe (fast-plate-ocr)
+- ✅ Vizualizare rapoarte PDF (OCR, PSNR/SSIM metrics)
+- ✅ Scripturi cross-platform (Windows/Linux/macOS)
+- 🔄 În dezvoltare: istoric rezultate, batch processing, fine-tuning model
 
 ---
 
@@ -83,7 +87,9 @@ backend/
 ├── models.py        # Modele SQLAlchemy (ORM)
 ├── schemas.py       # Validare Pydantic (Request/Response)
 ├── auth.py          # Logică JWT și autentificare
+├── ocr_service.py   # Serviciu OCR (fast-plate-ocr)
 ├── requirements.txt # Dependențe Python
+├── ml_models/       # Modele ML (Pix2Pix .keras files)
 └── __pycache__/     # Cache Python (generat automat)
 ```
 
@@ -112,6 +118,9 @@ app.add_middleware(
 | POST | `/api/auth/login` | Login și obținere token JWT | Nu |
 | GET | `/api/auth/me` | Informații utilizator curent | Da (JWT) |
 | GET | `/api/protected` | Rută protejată (exemplu) | Da (JWT) |
+| POST | `/api/inference` | Upload și reconstrucție imagine Pix2Pix | Da (JWT) |
+| POST | `/api/ocr` | Extrage text din plăcuță cu OCR | Da (JWT) |
+| GET | `/api/model/status` | Status modele ML (Pix2Pix + OCR) | Da (JWT) |
 
 #### Logica Endpoint-urilor
 
@@ -1070,16 +1079,24 @@ license-plate-reconstruction/
 │   ├── models.py                     # Modele ORM (User)
 │   ├── schemas.py                    # Scheme Pydantic (validare I/O)
 │   ├── auth.py                       # Logică JWT, hashing, autentificare
+│   ├── ocr_service.py                # Serviciu OCR (fast-plate-ocr wrapper)
 │   ├── requirements.txt              # Dependențe Python
 │   ├── .env                          # Variabile mediu (SECRET_KEY, DATABASE_URL)
 │   ├── .env.example                  # Template pentru .env
 │   ├── lpr_database.db               # Bază de date SQLite (generat automat)
+│   ├── ml_models/                    # Modele ML (.keras files)
+│   │   └── generator_256x128noSkew.keras  # Model Pix2Pix
 │   └── __pycache__/                  # Cache bytecode Python
 │
 ├── frontend/                         # Aplicația frontend React
 │   ├── index.html                    # HTML template
 │   ├── package.json                  # Dependențe Node.js, scripts npm
 │   ├── vite.config.js                # Configurare Vite (port, proxy)
+│   │
+│   ├── public/                       # Fișiere statice
+│   │   └── reports/                  # Rapoarte PDF
+│   │       ├── ocr_results.pdf       # Rezultate OCR
+│   │       └── psnr_ssim_results.pdf # Metrici calitate
 │   │
 │   ├── src/                          # Cod sursă React
 │   │   ├── main.jsx                  # Entry point React
@@ -1088,7 +1105,35 @@ license-plate-reconstruction/
 │   │   ├── index.css                 # Stiluri bază, reset CSS
 │   │   │
 │   │   ├── components/               # Componente reutilizabile
-│   │   │   └── PrivateRoute.jsx      # HOC pentru protecție rute
+│   │   │   ├── PrivateRoute.jsx      # HOC pentru protecție rute
+│   │   │   ├── ImageUploader.jsx     # Upload + Reconstrucție + OCR
+│   │   │   └── ImageUploader.css     # Stiluri componenta upload
+│   │   │
+│   │   ├── contexts/                 # Context providers (state global)
+│   │   │   └── AuthContext.jsx       # Context autentificare (user, login, logout)
+│   │   │
+│   │   └── pages/                    # Componente pagini
+│   │       ├── Login.jsx             # Pagină login
+│   │       ├── Register.jsx          # Pagină înregistrare
+│   │       ├── Dashboard.jsx         # Pagină dashboard (protejată)
+│   │       ├── Metrics.jsx           # Pagină rapoarte PDF
+│   │       ├── Auth.css              # Stiluri login + register
+│   │       ├── Dashboard.css         # Stiluri dashboard
+│   │       └── Metrics.css           # Stiluri pagină metrics
+│   │
+│   └── node_modules/                 # Dependențe instalate (generat de npm)
+│
+├── start.ps1                         # Script pornire Windows (PowerShell)
+├── start.bat                         # Script pornire Windows (batch)
+├── start.sh                          # Script pornire Linux/macOS (bash)
+├── stop.ps1                          # Script oprire Windows
+├── stop.sh                           # Script oprire Linux/macOS
+├── docker-compose.yml                # Configurare Docker (PostgreSQL)
+├── .env.docker                       # Environment pentru Docker
+├── .env.docker.example               # Template Docker env
+├── README.md                         # Documentație proiect (setup, features)
+├── LICENSE                           # Licență proiect
+└── details.md                        # ACEST FIȘIER - Documentație tehnică completă
 │   │   │
 │   │   ├── contexts/                 # Context providers (state global)
 │   │   │   └── AuthContext.jsx       # Context autentificare (user, login, logout)
@@ -1111,14 +1156,16 @@ license-plate-reconstruction/
 
 #### Backend
 
-- **main.py**: Punct de intrare, definește toate endpoint-urile API, configurează CORS, inițializează FastAPI app
+- **main.py**: Punct de intrare, definește toate endpoint-urile API, configurează CORS, inițializează FastAPI app, încarcă modelele ML (Pix2Pix + OCR)
 - **database.py**: Creează engine-ul SQLAlchemy, SessionLocal factory, Base pentru modele
 - **models.py**: Definește schema tabelei `users` folosind SQLAlchemy ORM
 - **schemas.py**: Pydantic models pentru validare request/response (UserCreate, UserResponse, Token)
 - **auth.py**: Funcții pentru hashing bcrypt, generare/verificare JWT, dependency injection `get_current_user`
-- **requirements.txt**: Lista tuturor dependențelor Python (FastAPI, SQLAlchemy, bcrypt, etc.)
+- **ocr_service.py**: Wrapper pentru fast-plate-ocr, OCRManager singleton, funcție run_ocr()
+- **requirements.txt**: Lista tuturor dependențelor Python (FastAPI, TensorFlow, fast-plate-ocr, etc.)
 - **.env**: Variabile de mediu sensibile (SECRET_KEY, DATABASE_URL) - NU se commit în Git
 - **lpr_database.db**: Fișier SQLite generat automat la primul run, conține tabela users
+- **ml_models/**: Folder cu modele Pix2Pix (.keras format)
 
 #### Frontend
 
@@ -1127,11 +1174,22 @@ license-plate-reconstruction/
 - **vite.config.js**: Configurare dev server (port 3000, proxy către backend :8000)
 - **AuthContext.jsx**: State management global pentru autentificare, expune `login`, `register`, `logout`, `user`
 - **PrivateRoute.jsx**: HOC care verifică autentificarea înainte de a randa componenta protejată
+- **ImageUploader.jsx**: Componentă pentru upload, reconstrucție Pix2Pix și OCR pe imagini
 - **Login.jsx**: Form login, apelează `login()` din context, redirectează la dashboard
 - **Register.jsx**: Form register, validează input, apelează `register()`, redirectează la login
-- **Dashboard.jsx**: Pagină protejată, afișează date user, buton logout
+- **Dashboard.jsx**: Pagină protejată, afișează date user, buton logout, link către Metrics
+- **Metrics.jsx**: Pagină pentru vizualizare rapoarte PDF (OCR results, PSNR/SSIM)
 - **Auth.css**: Stiluri pentru paginile de autentificare (form, input, button, card)
 - **Dashboard.css**: Stiluri pentru dashboard (navbar, cards, layout)
+- **Metrics.css**: Stiluri pentru pagina de metrics (tabs, iframe viewer)
+- **ImageUploader.css**: Stiluri pentru componenta de upload (preview, butoane OCR, rezultate)
+
+#### Scripts
+
+- **start.ps1 / start.bat**: Pornește automat PostgreSQL + Backend + Frontend pe Windows
+- **start.sh**: Pornește automat PostgreSQL + Backend + Frontend pe Linux/macOS
+- **stop.ps1**: Oprește toate serviciile pe Windows (opțional păstrează PostgreSQL)
+- **stop.sh**: Oprește toate serviciile pe Linux/macOS (opțional păstrează PostgreSQL)
 
 ---
 
@@ -1139,18 +1197,48 @@ license-plate-reconstruction/
 
 ### 1. Startup Sequence
 
-**Backend:**
+**Quick Start (Recomandat):**
+
+Windows:
+```bash
+# Pornește tot automat (Frontend + Backend + PostgreSQL)
+.\start.ps1
+# sau dublu-click pe start.bat
+```
+
+Linux/macOS:
+```bash
+# Fă scriptul executabil (prima dată)
+chmod +x start.sh
+
+# Pornește tot automat (Frontend + Backend + PostgreSQL)
+./start.sh
+```
+
+**Manual Setup:**
+
+Backend (Windows):
 ```bash
 cd backend
 python -m venv venv
-venv\Scripts\activate    # Windows
+.\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 python main.py
 # → Uvicorn running on http://0.0.0.0:8000
 # → Database tables created (if not exists)
 ```
 
-**Frontend:**
+Backend (Linux/macOS):
+```bash
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python main.py
+# → Uvicorn running on http://0.0.0.0:8000
+```
+
+Frontend (toate platformele):
 ```bash
 cd frontend
 npm install
@@ -1167,8 +1255,8 @@ Browser (localhost:3000)
 Vite Dev Server (localhost:3000)
     ↕ Proxy: /api/* → :8000/api/*
 FastAPI Backend (localhost:8000)
-    ↕ SQLAlchemy ORM
-SQLite Database (lpr_database.db)
+    ↕ SQLAlchemy ORM + TensorFlow + fast-plate-ocr
+Database + ML Models (PostgreSQL + .keras + ONNX)
 ```
 
 ### 3. Technology Stack Integration
@@ -1177,7 +1265,7 @@ SQLite Database (lpr_database.db)
 ┌─────────────────────────────────────────────────────────────┐
 │                    PRESENTATION LAYER                        │
 │  React Components + React Router + CSS                      │
-│  - Login.jsx, Register.jsx, Dashboard.jsx                   │
+│  - Login, Register, Dashboard, Metrics, ImageUploader       │
 │  - PrivateRoute protection                                  │
 └─────────────────────────────────────────────────────────────┘
                           ↕ Axios HTTP
@@ -1188,36 +1276,39 @@ SQLite Database (lpr_database.db)
 │  - login/register/logout functions                          │
 │  - localStorage persistence                                 │
 └─────────────────────────────────────────────────────────────┘
-                    ↕ REST API (JSON)
+                    ↕ REST API (JSON + multipart/form-data)
 ┌─────────────────────────────────────────────────────────────┐
 │                      API LAYER                               │
 │  FastAPI + Pydantic                                         │
 │  - Endpoint definitions (main.py)                           │
 │  - Request/Response validation (schemas.py)                 │
-│  - Dependency injection                                     │
+│  - Dependency injection, file uploads                       │
 └─────────────────────────────────────────────────────────────┘
                     ↕ Function Calls
 ┌─────────────────────────────────────────────────────────────┐
 │                   BUSINESS LOGIC LAYER                       │
-│  Python Functions (auth.py)                                 │
+│  Python Functions (auth.py, ocr_service.py)                 │
 │  - Password hashing (bcrypt)                                │
 │  - JWT generation/verification (python-jose)                │
 │  - User authentication                                      │
+│  - OCR text extraction (fast-plate-ocr)                     │
 └─────────────────────────────────────────────────────────────┘
-                    ↕ SQLAlchemy ORM
+                    ↕ SQLAlchemy ORM + ML Inference
 ┌─────────────────────────────────────────────────────────────┐
 │                    DATA ACCESS LAYER                         │
 │  SQLAlchemy ORM (models.py, database.py)                    │
-│  - User model definition                                    │
-│  - Session management                                       │
-│  - Query building                                           │
+│  TensorFlow (Pix2Pix model inference)                       │
+│  ONNX Runtime (fast-plate-ocr inference)                    │
+│  - User model, session management                           │
+│  - ML model loading and prediction                          │
 └─────────────────────────────────────────────────────────────┘
-                    ↕ SQL Queries
+                    ↕ SQL Queries + File I/O
 ┌─────────────────────────────────────────────────────────────┐
-│                    DATABASE LAYER                            │
-│  SQLite / PostgreSQL                                        │
-│  - users table                                              │
-│  - Persistent storage                                       │
+│                    STORAGE LAYER                             │
+│  PostgreSQL / SQLite (users table)                          │
+│  File System (ml_models/*.keras, ONNX models)               │
+│  - Persistent data storage                                  │
+│  - ML model files                                           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -1231,9 +1322,11 @@ Proiectul **License Plate Reconstruction** este o aplicație web full-stack comp
 ✅ **Backend complet**:
 - REST API cu FastAPI
 - Autentificare JWT robustă
-- Bază de date relațională cu ORM
+- Bază de date relațională cu ORM (PostgreSQL/SQLite)
 - Validare complexă a datelor
 - Securitate (bcrypt, JWT, CORS)
+- ML Inference (Pix2Pix model TensorFlow)
+- OCR service (fast-plate-ocr cu ONNX Runtime)
 
 ✅ **Frontend modern**:
 - React 18 cu Vite
@@ -1241,33 +1334,40 @@ Proiectul **License Plate Reconstruction** este o aplicație web full-stack comp
 - Context API pentru state management
 - Interfață responsive
 - Protecție rute
+- Upload și preview imagini
+- Integrare OCR și reconstrucție Pix2Pix
+- Vizualizare rapoarte PDF
 
 ✅ **Integrare completă**:
 - Comunicare frontend-backend prin Axios
 - Proxy development (Vite)
 - Error handling consistent
 - Token persistence (localStorage)
+- Docker PostgreSQL pentru producție
+- Cross-platform scripts (Windows/Linux/macOS)
 
 ### Next Steps (Viitor)
 🔄 **Funcționalități planificate**:
-1. **Upload imagini** - interfață pentru încărcare plăcuțe
-2. **Integrare Pix2Pix** - model deep learning pentru reconstrucție
-3. **Procesare imagini** - pipeline pentru recunoaștere
-4. **Istoric utilizator** - salvare rezultate procesări
-5. **Admin panel** - fine-tuning model, gestiune useri
-6. **Export rezultate** - CSV, PDF, JSON
+1. **Istoric utilizator** - salvare și vizualizare rezultate procesări anterioare
+2. **Batch processing** - procesare multiplă de imagini simultan
+3. **Admin panel** - fine-tuning model, gestiune useri, statistici
+4. **Export rezultate** - CSV, PDF, JSON download
+5. **Metrics tracking** - PSNR/SSIM calculation în real-time
+6. **Model versioning** - suport pentru multiple versiuni de modele
 
 ### Tehnologii Cheie Folosite
-- **Backend**: FastAPI, SQLAlchemy, JWT (python-jose), bcrypt
-- **Frontend**: React, React Router, Axios, Vite
-- **Database**: SQLite (dev), PostgreSQL (prod)
+- **Backend**: FastAPI, SQLAlchemy, JWT (python-jose), bcrypt, TensorFlow 2.20.0, fast-plate-ocr 1.0.2, onnxruntime
+- **Frontend**: React 18, React Router 6, Axios, Vite
+- **Database**: PostgreSQL (prod), SQLite (dev)
+- **ML/AI**: TensorFlow (Pix2Pix), ONNX Runtime (OCR), OpenCV, NumPy
 - **Security**: bcrypt password hashing, JWT tokens, CORS
-- **Tools**: npm, pip, venv, git
+- **DevOps**: Docker, Docker Compose, cross-platform bash/PowerShell scripts
+- **Tools**: npm, pip, venv, Git, Git LFS
 
 ---
 
 **Autor**: António Heasca  
 **Proiect**: License Plate Reconstruction System  
-**Versiune**: 1.0.0  
-**Data**: Noiembrie 2024  
+**Versiune**: 2.0.0  
+**Data**: Noiembrie 2025  
 **Repository**: license-plate-reconstruction
