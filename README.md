@@ -12,6 +12,7 @@ license-plate-reconstruction/
 │   ├── models.py           # SQLAlchemy models
 │   ├── schemas.py          # Pydantic schemas
 │   ├── auth.py             # Authentication logic
+│   ├── ocr_service.py      # OCR service for license plate text recognition
 │   ├── requirements.txt    # Python dependencies
 │   ├── Dockerfile          # Backend Docker image
 │   ├── .env               # Environment variables
@@ -57,25 +58,29 @@ license-plate-reconstruction/
 - ✅ **Protected Routes**: Frontend and backend route protection
 - ✅ **PostgreSQL Database**: Robust relational database with SQLAlchemy ORM (Dockerized)
 - ✅ **License Plate Reconstruction**: Pix2Pix deep learning model for image enhancement
+- ✅ **OCR Text Recognition**: Fast-plate-ocr integration for license plate text extraction
 - ✅ **Image Upload**: Drag & drop or click to upload license plate images
 - ✅ **Real-time Inference**: Process images and view reconstructed results instantly
 - ✅ **Side-by-Side Comparison**: Visual comparison of original vs reconstructed images
+- ✅ **OCR on Both Images**: Run OCR on original and reconstructed plates to compare accuracy
 - ✅ **Modern UI**: Responsive React interface with custom styling
 - ✅ **CORS Configured**: Secure cross-origin resource sharing
 - ✅ **Docker Support**: Full containerization with docker-compose
 - ✅ **Automation Scripts**: One-command start/stop for development
 - ✅ **Hot Reload**: Instant updates during development (frontend & backend)
-- 🔄 **Coming Soon**: OCR text extraction, results history, model fine-tuning
+- 🔄 **Coming Soon**: Results history, model fine-tuning, batch processing
 
 ## 🚀 Prerequisites
 
 Before you begin, ensure you have the following installed:
 
-### Required for Development (start.ps1)
+### Required for Development (Quick Start Scripts)
 - **Docker Desktop** ([Download](https://www.docker.com/products/docker-desktop/)) - For PostgreSQL container
 - **Python 3.9+** ([Download](https://www.python.org/downloads/)) - For backend (requires TensorFlow 2.20.0)
 - **Node.js 18+** and npm ([Download](https://nodejs.org/)) - For frontend
 - **Git LFS** ([Download](https://git-lfs.github.com/)) - For ML model files (185 MB)
+
+**Note**: Quick start scripts are available for both Windows (`start.ps1`) and Linux/macOS (`start.sh`).
 
 ### Required for Production (docker-compose up)
 - **Docker Desktop** only - All services run in containers
@@ -84,7 +89,7 @@ Before you begin, ensure you have the following installed:
 
 ### 1. Clone the Repository
 
-```powershell
+```bash
 git clone https://github.com/antonioheasca4/license-plate-reconstruction.git
 cd license-plate-reconstruction
 ```
@@ -93,6 +98,7 @@ cd license-plate-reconstruction
 
 ### 2. Backend Setup
 
+**Windows (PowerShell):**
 ```powershell
 # Navigate to backend directory
 cd backend
@@ -108,41 +114,73 @@ pip install -r requirements.txt
 
 # Create .env file from example
 copy .env.example .env
-
-# The .env file is already configured for Docker PostgreSQL
-# DATABASE_URL=postgresql://lpr_user:lpr_password_change_in_production@localhost:5432/lpr_database
 ```
+
+**Linux/macOS (Bash):**
+```bash
+# Navigate to backend directory
+cd backend
+
+# Create virtual environment
+python3 -m venv venv
+
+# Activate virtual environment
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Create .env file from example
+cp .env.example .env
+```
+
+**Note**: The `.env` file is already configured for Docker PostgreSQL:  
+`DATABASE_URL=postgresql://lpr_user:lpr_password_change_in_production@localhost:5432/lpr_database`
 
 **ML Dependencies Included**:
 - TensorFlow 2.20.0 (Pix2Pix model)
 - Pillow 10.2.0 (Image processing)
 - NumPy 1.26.3 (Array operations)
+- fast-plate-ocr 1.0.2 (License plate OCR)
+- onnxruntime (Fast OCR inference)
 
 **Important**: For production, generate a secure SECRET_KEY:
 
-```powershell
+```bash
 # Generate a secure random key
 python -c "import secrets; print(secrets.token_hex(32))"
+# Or on Python 3:
+python3 -c "import secrets; print(secrets.token_hex(32))"
 ```
 
 Copy the output and update `SECRET_KEY` in your `.env` file.
 
 ### 3. Docker Setup (PostgreSQL)
 
+**Windows (PowerShell):**
 ```powershell
 # Create Docker environment file from example
 copy .env.docker.example .env.docker
-
-# Configure .env.docker with PostgreSQL credentials (already pre-configured)
-# POSTGRES_USER=lpr_user
-# POSTGRES_PASSWORD=lpr_password_change_in_production
-# POSTGRES_DB=lpr_database
 ```
 
-**Note**: The `start.ps1` script will automatically start PostgreSQL container when you run the application.
+**Linux/macOS (Bash):**
+```bash
+# Create Docker environment file from example
+cp .env.docker.example .env.docker
+```
+
+**Configure** `.env.docker` with PostgreSQL credentials (already pre-configured):
+```
+POSTGRES_USER=lpr_user
+POSTGRES_PASSWORD=lpr_password_change_in_production
+POSTGRES_DB=lpr_database
+```
+
+**Note**: The startup script will automatically start PostgreSQL container when you run the application.
 
 ### 4. Frontend Setup
 
+**Windows (PowerShell):**
 ```powershell
 # Navigate to frontend directory
 cd frontend
@@ -154,10 +192,23 @@ npm install
 copy .env.example .env
 ```
 
+**Linux/macOS (Bash):**
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Install dependencies
+npm install
+
+# Create .env file from example
+cp .env.example .env
+```
+
 ### 5. Add ML Model
 
 Place your trained Pix2Pix model in the backend:
 
+**Windows:**
 ```powershell
 # Copy any .keras model file to:
 backend/ml_models/
@@ -166,6 +217,15 @@ backend/ml_models/
 backend/ml_models/generator_256x128noSkew.keras
 backend/ml_models/model.keras
 backend/ml_models/pix2pix_generator.keras
+```
+
+**Linux/macOS:**
+```bash
+# Copy any .keras model file to:
+backend/ml_models/
+
+# Example:
+cp /path/to/your/model.keras backend/ml_models/
 ```
 
 **Model Requirements**:
@@ -180,14 +240,22 @@ The first `.keras` file found will be automatically loaded at backend startup.
 
 ### Quick Start (Recommended) ⭐
 
-**Option 1: Double-click to start**
+**Windows:**
 ```
-Double-click: start.bat
+# Option 1: Double-click to start
+start.bat
+
+# Option 2: PowerShell command
+.\start.ps1
 ```
 
-**Option 2: PowerShell command**
-```powershell
-.\start.ps1
+**Linux/macOS:**
+```bash
+# Make the script executable (first time only)
+chmod +x start.sh
+
+# Run the start script
+./start.sh
 ```
 
 This will automatically:
@@ -203,7 +271,8 @@ This will automatically:
 
 **Stop the application:**
 - Press `Ctrl+C` in terminal
-- Or run: `.\stop.ps1`
+- **Windows**: Or run `.\stop.ps1`
+- **Linux/macOS**: Or run `./stop.sh`
 
 ### Alternative: Docker Compose (Production-like)
 
@@ -246,14 +315,17 @@ Once logged in:
    - Wait for Pix2Pix model to process (few seconds)
    - View side-by-side comparison of original vs reconstructed image
 
-3. **Upload Another**:
-   - Click "Upload Another Image" to process more plates
+3. **Run OCR**:
+   - Click "🔍 Run OCR" button on original image to extract text
+   - Click "🔍 Run OCR" button on reconstructed image to extract text
+   - Compare OCR accuracy between original and reconstructed plates
 
 ### 4. Test Features
 
 - View your profile information on the Dashboard
 - Upload multiple license plate images for reconstruction
 - Try degraded/blurry images to see reconstruction quality
+- Compare OCR results between original and enhanced images
 - Try logging out and accessing `/dashboard` directly (you'll be redirected to login)
 
 ## 📡 API Endpoints
@@ -269,11 +341,14 @@ Once logged in:
 - `GET /api/auth/me` - Get current user information
 - `GET /api/protected` - Example protected route
 - `POST /api/inference` - Upload and reconstruct license plate image
-- `GET /api/model/status` - Check ML model status
+- `POST /api/ocr` - Extract text from license plate image using OCR
+- `GET /api/model/status` - Check ML models status (Pix2Pix + OCR)
 
 ### Using the API (cURL Examples)
 
 **Register:**
+
+Windows (PowerShell):
 ```powershell
 $body = @{
     email = "test@example.com"
@@ -284,7 +359,20 @@ $body = @{
 Invoke-RestMethod -Uri "http://localhost:8000/api/auth/register" -Method Post -Body $body -ContentType "application/json"
 ```
 
+Linux/macOS (Bash):
+```bash
+curl -X POST "http://localhost:8000/api/auth/register" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com",
+    "username": "testuser",
+    "password": "password123"
+  }'
+```
+
 **Login:**
+
+Windows (PowerShell):
 ```powershell
 $formData = @{
     username = "testuser"
@@ -294,7 +382,16 @@ $formData = @{
 Invoke-RestMethod -Uri "http://localhost:8000/api/auth/login" -Method Post -Body $formData
 ```
 
+Linux/macOS (Bash):
+```bash
+curl -X POST "http://localhost:8000/api/auth/login" \
+  -F "username=testuser" \
+  -F "password=password123"
+```
+
 **Access Protected Route:**
+
+Windows (PowerShell):
 ```powershell
 $token = "your_access_token_here"
 $headers = @{
@@ -304,7 +401,15 @@ $headers = @{
 Invoke-RestMethod -Uri "http://localhost:8000/api/auth/me" -Headers $headers
 ```
 
+Linux/macOS (Bash):
+```bash
+curl -X GET "http://localhost:8000/api/auth/me" \
+  -H "Authorization: Bearer your_access_token_here"
+```
+
 **Upload Image for Reconstruction:**
+
+Windows (PowerShell):
 ```powershell
 $token = "your_access_token_here"
 $headers = @{
@@ -317,7 +422,37 @@ $boundary = [System.Guid]::NewGuid().ToString()
 Invoke-RestMethod -Uri "http://localhost:8000/api/inference" -Method Post -Headers $headers -InFile $filePath -ContentType "multipart/form-data"
 ```
 
-**Check Model Status:**
+Linux/macOS (Bash):
+```bash
+curl -X POST "http://localhost:8000/api/inference" \
+  -H "Authorization: Bearer your_access_token_here" \
+  -F "file=@path/to/license_plate.jpg"
+```
+
+**Run OCR on Image:**
+
+Windows (PowerShell):
+```powershell
+$token = "your_access_token_here"
+$headers = @{
+    Authorization = "Bearer $token"
+}
+
+$filePath = "path/to/license_plate.jpg"
+
+Invoke-RestMethod -Uri "http://localhost:8000/api/ocr" -Method Post -Headers $headers -InFile $filePath -ContentType "multipart/form-data"
+```
+
+Linux/macOS (Bash):
+```bash
+curl -X POST "http://localhost:8000/api/ocr" \
+  -H "Authorization: Bearer your_access_token_here" \
+  -F "file=@path/to/license_plate.jpg"
+```
+
+**Check Models Status:**
+
+Windows (PowerShell):
 ```powershell
 $token = "your_access_token_here"
 $headers = @{
@@ -325,6 +460,12 @@ $headers = @{
 }
 
 Invoke-RestMethod -Uri "http://localhost:8000/api/model/status" -Headers $headers
+```
+
+Linux/macOS (Bash):
+```bash
+curl -X GET "http://localhost:8000/api/model/status" \
+  -H "Authorization: Bearer your_access_token_here"
 ```
 
 ## 🔒 Security Features
@@ -347,6 +488,7 @@ Invoke-RestMethod -Uri "http://localhost:8000/api/model/status" -Headers $header
 - **passlib** - Password hashing library
 - **uvicorn** - ASGI server
 - **TensorFlow 2.20.0** - Deep learning framework for Pix2Pix model
+- **fast-plate-ocr 1.0.2** - License plate OCR with ONNX runtime
 - **Pillow** - Image processing library
 - **NumPy** - Numerical computing
 
@@ -377,7 +519,7 @@ The core features are complete! Here's what's coming next:
 
 1. ✅ ~~**Image Upload Feature**~~ - Complete! Upload license plate images via dashboard
 2. ✅ ~~**Pix2Pix Model Integration**~~ - Complete! Model loaded and running inference
-3. **OCR Integration**: Extract and display text from license plates
+3. ✅ ~~**OCR Integration**~~ - Complete! Fast-plate-ocr extracts text from plates
 4. **Results History**: Store and display recognition history in database
 5. **Fine-tuning Interface**: Admin panel for model retraining with new data
 6. **Batch Processing**: Upload and process multiple images simultaneously
@@ -400,9 +542,16 @@ The core features are complete! Here's what's coming next:
 - TensorFlow installation may take time (331.9 MB)
 
 **Model not loading:**
-- Ensure at least one `.keras` file is in `backend/ml_models/`
+- Ensure at least one `.keras` file is in `backend/ml_models/` for Pix2Pix
+- OCR model (cct-xs-v1-global-model) downloads automatically on first run
 - Check backend logs for "Found model file: ml_models/..." and "✓ ML model loaded successfully!"
-- Verify model file is not corrupted
+- Check OCR logs for "✓ OCR model loaded successfully!"
+- Verify model files are not corrupted
+
+**OCR errors:**
+- Ensure `fast-plate-ocr[onnx]` is installed: `pip install fast-plate-ocr[onnx]`
+- First OCR run downloads the model (may take time)
+- Check image quality - OCR works best on clear, properly cropped plates
 
 ### Frontend Issues
 
@@ -434,19 +583,11 @@ docker-compose restart
 .\start.ps1
 ```
 
-### CORS Issues
-
-If you get CORS errors:
-- Ensure backend is running on port 8000
-- Ensure frontend is running on port 3000
-- Check `ALLOWED_ORIGINS` in backend `.env`
 
 ## 📚 Additional Documentation
 
 - 📖 **[AUTOMATION_GUIDE.md](AUTOMATION_GUIDE.md)** - Complete guide for automation scripts
 - 🐳 **[README_DOCKER.md](README_DOCKER.md)** - Docker setup and management
-- 🔒 **[ENV_BEST_PRACTICES.md](ENV_BEST_PRACTICES.md)** - Security best practices
-- 🧪 **[TEST_SETUP.md](TEST_SETUP.md)** - Verification checklist
 - 📋 **[details.md](details.md)** - Comprehensive technical documentation (Romanian)
 
 ## 📄 License

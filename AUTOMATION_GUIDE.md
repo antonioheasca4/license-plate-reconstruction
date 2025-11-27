@@ -2,10 +2,10 @@
 
 ## 📋 Ce Scripturi Ai Disponibile
 
-### 1. **start.ps1** / **start.bat** - Start Aplicația ⭐ (RECOMANDAT)
+### 1. **start.ps1** / **start.bat** (Windows) / **start.sh** (Linux/macOS) - Start Aplicația ⭐ (RECOMANDAT)
 Pornește TOTUL: Frontend + Backend + PostgreSQL
 
-### 2. **stop.ps1** / **stop.bat** - Stop Aplicația
+### 2. **stop.ps1** / **stop.bat** (Windows) / **stop.sh** (Linux/macOS) - Stop Aplicația
 Oprește frontend, backend și opțional PostgreSQL
 
 ### 3. **docker-compose.yml** - Configurație Docker Completă
@@ -15,15 +15,26 @@ Contine 3 servicii: PostgreSQL, Backend, Frontend
 
 ---
 
-## 🎯 Metoda 1: Script PowerShell (RECOMANDAT pentru Development)
+## 🎯 Metoda 1: Scripturi Automate (RECOMANDAT pentru Development)
 
 ### Pornire Aplicație ⭐
+
+**Windows:**
 ```powershell
 # Metodă 1: PowerShell direct
 .\start.ps1
 
 # Metodă 2: Double-click pe start.bat
 # (Windows Explorer → dublu-click start.bat)
+```
+
+**Linux/macOS:**
+```bash
+# Fă scriptul executabil (prima dată)
+chmod +x start.sh
+
+# Pornește aplicația
+./start.sh
 ```
 
 **Ce face:**
@@ -40,6 +51,8 @@ Contine 3 servicii: PostgreSQL, Backend, Frontend
 - 📚 API Docs: http://localhost:8000/docs
 
 ### Oprire Aplicație
+
+**Windows:**
 ```powershell
 # Oprește Frontend + Backend, păstrează PostgreSQL și datele
 .\stop.ps1
@@ -52,6 +65,18 @@ Contine 3 servicii: PostgreSQL, Backend, Frontend
 
 # Oprește tot și ȘTERGE datele (ATENȚIE!)
 .\stop.ps1 -RemoveData
+```
+
+**Linux/macOS:**
+```bash
+# Oprește Frontend + Backend, păstrează PostgreSQL și datele
+./stop.sh
+
+# Oprește doar backend + frontend, lasă PostgreSQL pornit
+./stop.sh --keep-docker
+
+# Oprește tot și ȘTERGE datele (ATENȚIE!)
+./stop.sh --remove-data
 ```
 
 **SAU mai simplu:** Ctrl+C în terminal (oprește doar ce rulează în foreground)
@@ -115,10 +140,11 @@ docker-compose up -d --build frontend  # ✅ Rebuild necesar
 
 ## 📊 Comparație Metode
 
-| Aspect | start.ps1 | docker-compose up |
+| Aspect | start.ps1/start.sh | docker-compose up |
 |--------|-----------|-------------------|
 | **Ce pornește** | Frontend + Backend + PostgreSQL | Toate 3 în containere |
 | **Unde rulează** | Frontend & Backend: PC / PostgreSQL: Docker | Totul în Docker |
+| **Platforme** | ✅ Windows, Linux, macOS | ✅ Windows, Linux, macOS |
 | **Viteză start** | ⚡ Rapid (3-5 sec) | 🐌 Mai lent (10-15 sec) |
 | **Development** | ✅ Excelent | ⚠️ OK, dar rebuild frecvent |
 | **Production** | ❌ Nu recomandat | ✅ Ideal |
@@ -132,10 +158,18 @@ docker-compose up -d --build frontend  # ✅ Rebuild necesar
 ## 🎯 Recomandări
 
 ### Pentru Development (Zi cu Zi) ⭐
+
+**Windows:**
 ```powershell
 # Pornește totul instant!
 .\start.ps1
 # SAU dublu-click pe start.bat
+```
+
+**Linux/macOS:**
+```bash
+# Pornește totul instant!
+./start.sh
 ```
 
 ### Pentru Testing (Simulare Production)
@@ -172,10 +206,17 @@ powershell.exe -ExecutionPolicy Bypass -File .\start.ps1
 ## 📝 Workflow Tipic Development
 
 ### Dimineața (Start lucru)
+
+**Windows:**
 ```powershell
 # Pornește aplicația cu un singur command!
 .\start.ps1
 # SAU dublu-click start.bat
+```
+
+**Linux/macOS:**
+```bash
+./start.sh
 ```
 
 **Output:**
@@ -209,13 +250,24 @@ INFO:     Uvicorn running on http://0.0.0.0:8000
 - http://localhost:3000 → aplicația ta completă!
 
 ### Seara (Stop lucru)
-```powershell
-# Ctrl+C în terminal (oprește Frontend + Backend)
 
-# Opțional: oprește și PostgreSQL
+**Toate platformele:**
+```bash
+# Ctrl+C în terminal (oprește Frontend + Backend)
+```
+
+**Windows - Opțional oprește PostgreSQL:**
+```powershell
 .\stop.ps1              # Oprește tot, păstrează datele
 # SAU
 .\stop.ps1 -KeepDocker  # Lasă PostgreSQL pornit pentru mâine
+```
+
+**Linux/macOS - Opțional oprește PostgreSQL:**
+```bash
+./stop.sh              # Oprește tot, păstrează datele
+# SAU
+./stop.sh --keep-docker  # Lasă PostgreSQL pornit pentru mâine
 ```
 
 ---
@@ -262,9 +314,16 @@ docker-compose up -d
 ## 🎉 Exemple Rapide
 
 ### Start Aplicația (Frontend + Backend + PostgreSQL) ⭐
+
+**Windows:**
 ```powershell
 .\start.ps1
 # SAU dublu-click: start.bat
+```
+
+**Linux/macOS:**
+```bash
+./start.sh
 ```
 
 ### Start complet izolat în Docker (toate 3 containere)
@@ -303,6 +362,7 @@ docker-compose down -v
 ---
 
 **TL;DR:**
-- **Start Aplicația** → `.\start.ps1` sau dublu-click `start.bat` ⭐
+- **Start Aplicația (Windows)** → `.\start.ps1` sau dublu-click `start.bat` ⭐
+- **Start Aplicația (Linux/macOS)** → `./start.sh` ⭐
 - **Totul în Docker** → `docker-compose up`
-- **Stop** → `Ctrl+C` sau `.\stop.ps1`
+- **Stop** → `Ctrl+C` sau `.\stop.ps1` (Windows) / `./stop.sh` (Linux/macOS)

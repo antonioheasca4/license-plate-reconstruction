@@ -10,6 +10,9 @@ const ImageUploader = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [dragOver, setDragOver] = useState(false);
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [ocrOriginal, setOcrOriginal] = useState('');
+  const [ocrReconstructed, setOcrReconstructed] = useState('');
   const fileInputRef = useRef(null);
 
   const handleFileSelect = (event) => {
@@ -120,8 +123,56 @@ const ImageUploader = () => {
     setReconstructedUrl(null);
     setError('');
     setSuccess('');
+    setOcrOriginal('');
+    setOcrReconstructed('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const handleOCR = async (imageSource) => {
+    setOcrLoading(true);
+    setError('');
+
+    try {
+      const token = localStorage.getItem('token');
+      let blob;
+
+      if (imageSource === 'original') {
+        // Convert data URL to blob
+        const response = await fetch(previewUrl);
+        blob = await response.blob();
+      } else {
+        // Reconstructed image is already a blob URL
+        const response = await fetch(reconstructedUrl);
+        blob = await response.blob();
+      }
+
+      const formData = new FormData();
+      formData.append('file', blob, 'plate.png');
+
+      const ocrResponse = await axios.post('/api/ocr', formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      if (imageSource === 'original') {
+        setOcrOriginal(ocrResponse.data.text || 'No text detected');
+      } else {
+        setOcrReconstructed(ocrResponse.data.text || 'No text detected');
+      }
+
+    } catch (err) {
+      console.error('OCR error:', err);
+      if (err.response?.status === 401) {
+        setError('Authentication failed. Please login again.');
+      } else {
+        setError(`OCR failed: ${err.response?.data?.detail || err.message}`);
+      }
+    } finally {
+      setOcrLoading(false);
     }
   };
 
@@ -186,12 +237,37 @@ const ImageUploader = () => {
             <div className="image-box">
               <h4>Original Image</h4>
               <img src={previewUrl} alt="Original" />
+              <button 
+                onClick={() => handleOCR('original')} 
+                className="btn-ocr"
+                disabled={ocrLoading}
+              >
+                🔍 Run OCR
+              </button>
+              {ocrOriginal && (
+                <div className="ocr-result">
+                  <strong>Text:</strong> <span className="ocr-text">{ocrOriginal}</span>
+                </div>
+              )}
             </div>
             <div className="image-box">
               <h4>Reconstructed Image</h4>
               <img src={reconstructedUrl} alt="Reconstructed" />
+              <button 
+                onClick={() => handleOCR('reconstructed')} 
+                className="btn-ocr"
+                disabled={ocrLoading}
+              >
+                🔍 Run OCR
+              </button>
+              {ocrReconstructed && (
+                <div className="ocr-result">
+                  <strong>Text:</strong> <span className="ocr-text">{ocrReconstructed}</span>
+                </div>
+              )}
             </div>
           </div>
+          {ocrLoading && <div className="ocr-loading">Running OCR...</div>}
           <div style={{ marginTop: '20px' }}>
             <button onClick={handleReset} className="btn-upload">
               📤 Upload Another Image

@@ -10,9 +10,19 @@
 
 Pornește Frontend + Backend local, PostgreSQL în Docker:
 
+**Windows:**
 ```powershell
 .\start.ps1
 # SAU dublu-click pe start.bat
+```
+
+**Linux/macOS:**
+```bash
+# Fă scriptul executabil (prima dată)
+chmod +x start.sh
+
+# Pornește aplicația
+./start.sh
 ```
 
 **Avantaje:**
@@ -87,8 +97,14 @@ docker-compose up -d
 
 **Containere create (opțiunea 2 - toate):**
 - `lpr_postgres` - PostgreSQL 15 database
-- `lpr_backend` - FastAPI backend (Python 3.12)
+- `lpr_backend` - FastAPI backend (Python 3.12) + TensorFlow + fast-plate-ocr
 - `lpr_frontend` - React + Vite frontend (Node.js 18)
+
+**Backend ML Dependencies:**
+- TensorFlow 2.20.0 (Pix2Pix model pentru reconstrucție imagini)
+- fast-plate-ocr 1.0.2 (OCR pentru plăcuțe de înmatriculare)
+- onnxruntime (Fast inference pentru OCR)
+- OpenCV, NumPy, Pillow (procesare imagini)
 
 **Database settings:**
 - Port: 5432
@@ -119,15 +135,21 @@ docker-compose logs -f frontend
 - 📚 API Docs: http://localhost:8000/docs
 - 🗄️ PostgreSQL: localhost:5432
 
+**Funcționalități disponibile:**
+- ✅ Autentificare (Login/Register cu JWT)
+- ✅ Upload și reconstrucție imagini cu Pix2Pix
+- ✅ OCR pentru extragere text din plăcuțe
+- ✅ Vizualizare rapoarte PDF (OCR results, PSNR/SSIM metrics)
+- ✅ Dashboard protejat cu informații utilizator
+
 ---
 
 ## 🔄 Hot Reload și Modificări Cod
 
-### ⭐ Cu start.ps1 (Development) - HOT RELOAD COMPLET
+### ⭐ Cu start.ps1/start.sh (Development) - HOT RELOAD COMPLET
 
-```powershell
-.\start.ps1
-```
+**Windows:** `.\start.ps1`  
+**Linux/macOS:** `./start.sh`
 
 **Frontend (React + Vite):**
 - ✅ **Hot reload INSTANT**
@@ -143,6 +165,7 @@ docker-compose logs -f frontend
 - Backend-ul se repornește automat (2-3 secunde)
 - Vezi în terminal: `INFO: Application startup complete`
 - **NU trebuie să repornești manual!**
+- **Notă:** Modelele ML (Pix2Pix + OCR) se reîncarcă automat la restart
 
 **PostgreSQL:**
 - ✅ Datele persistă în volume Docker `postgres_data`
@@ -178,19 +201,28 @@ docker-compose up -d --build
 
 ### 📊 Comparație Hot Reload
 
-| Aspect | start.ps1 | docker-compose up |
+| Aspect | start.ps1/start.sh | docker-compose up |
 |--------|-----------|-------------------|
 | **Frontend changes** | ⚡ Instant (< 1s) | 🔄 Rebuild (~10-15s) |
 | **Backend changes** | ⚡ Auto-reload (2-3s) | 🔄 Rebuild (~5-10s) |
 | **CSS/Style changes** | ⚡ Instant | 🔄 Rebuild |
 | **Dependencies (npm/pip)** | 🔄 Reinstall manual | 🔄 Rebuild image |
+| **ML Models** | ⚡ Auto-reload la restart | 🔄 Rebuild image |
 | **Workflow** | ✅ Edit → Save → See | ⚠️ Edit → Build → Wait |
+| **Platforme** | ✅ Windows, Linux, macOS | ✅ Windows, Linux, macOS |
 
 ### 🎯 Recomandare Finală
 
 **Pentru development zilnic (modifici cod des):**
+
+**Windows:**
 ```powershell
 .\start.ps1  # ⭐ HOT RELOAD - productivitate maximă!
+```
+
+**Linux/macOS:**
+```bash
+./start.sh  # ⭐ HOT RELOAD - productivitate maximă!
 ```
 
 **Pentru testing environment production:**
@@ -203,11 +235,22 @@ docker-compose up -d --build  # Simulare production
 ## 🛠️ Comenzi Utile
 
 ### Oprire Aplicație
+
+**Toate platformele:**
+```bash
+# Ctrl+C în terminalul backend-ului
+```
+
+**Windows:**
 ```powershell
 # Folosește scriptul automat
 .\stop.ps1
+```
 
-# Sau manual: Ctrl+C în terminalul backend-ului
+**Linux/macOS:**
+```bash
+# Folosește scriptul automat
+./stop.sh
 ```
 
 ### Stop Servicii
@@ -428,6 +471,7 @@ type backup.sql | docker exec -i lpr_postgres psql -U lpr_user lpr_database
 - Doar PostgreSQL în Docker container
 - Hot reload instant pentru development
 - Acces direct la cod pentru debugging
+- Modelele ML (Pix2Pix + OCR) se încarcă din backend/ml_models/
 
 ---
 
@@ -463,19 +507,23 @@ type backup.sql | docker exec -i lpr_postgres psql -U lpr_user lpr_database
 - Izolare completă între servicii
 - Environment consistent (production-ready)
 - Rebuild necesar pentru schimbări de cod
+- Modelele ML sunt copiate în container la build time
 
 ---
 
 ## ✅ Checklist Setup
 
-### ⚡ Setup Rapid - start.ps1 (Development) ⭐
+### ⚡ Setup Rapid - start.ps1/start.sh (Development) ⭐
 - [ ] Docker Desktop instalat și pornit
 - [ ] Python 3.9+ și Node.js 18+ instalate
-- [ ] Rulat `.\start.ps1` (sau dublu-click `start.bat`)
+- [ ] **Windows:** Rulat `.\start.ps1` (sau dublu-click `start.bat`)
+- [ ] **Linux/macOS:** Rulat `./start.sh` (după `chmod +x start.sh`)
 - [ ] Așteptat să pornească toate serviciile
 - [ ] Verificat frontend la http://localhost:3000
 - [ ] Verificat backend la http://localhost:8000/docs
 - [ ] Testat înregistrare/login în aplicație
+- [ ] Testat upload imagine și reconstrucție Pix2Pix
+- [ ] Testat OCR pe plăcuță
 
 ### 🐳 Setup Docker Complet (Production-ready)
 - [ ] Docker Desktop instalat și pornit
@@ -493,6 +541,4 @@ type backup.sql | docker exec -i lpr_postgres psql -U lpr_user lpr_database
 ## 📚 Resurse Adiționale
 
 - 📖 **[AUTOMATION_GUIDE.md](AUTOMATION_GUIDE.md)** - Ghid complet pentru scripturile de automatizare
-- 🔒 **[ENV_BEST_PRACTICES.md](ENV_BEST_PRACTICES.md)** - Best practices pentru securitate
-- 🧪 **[TEST_SETUP.md](TEST_SETUP.md)** - Checklist pentru verificare setup
 - 📋 **[README.md](README.md)** - Documentație generală proiect
