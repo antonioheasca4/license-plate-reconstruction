@@ -30,7 +30,9 @@
 - ✅ OCR pentru extragere text din plăcuțe (fast-plate-ocr)
 - ✅ Vizualizare rapoarte PDF (OCR, PSNR/SSIM metrics)
 - ✅ Scripturi cross-platform (Windows/Linux/macOS)
-- 🔄 În dezvoltare: istoric rezultate, batch processing, fine-tuning model
+- ✅ Istoric procesări (ultimele 10 imagini cu rezultate OCR)
+- ✅ Persistență stare între pagini (localStorage)
+- 🔄 În dezvoltare: batch processing, fine-tuning model
 
 ---
 
@@ -69,7 +71,7 @@
 │  │  SQLite Database (development)                            │   │
 │  │  PostgreSQL (production-ready)                            │   │
 │  │  - File: lpr_database.db                                  │   │
-│  │  - Tabelă: users                                          │   │
+│  │  - Tabele: users, image_history                           │   │
 │  └──────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -121,6 +123,10 @@ app.add_middleware(
 | POST | `/api/inference` | Upload și reconstrucție imagine Pix2Pix | Da (JWT) |
 | POST | `/api/ocr` | Extrage text din plăcuță cu OCR | Da (JWT) |
 | GET | `/api/model/status` | Status modele ML (Pix2Pix + OCR) | Da (JWT) |
+| POST | `/api/history` | Salvează procesare în istoric | Da (JWT) |
+| GET | `/api/history` | Obține istoric procesări (limit=10) | Da (JWT) |
+| PUT | `/api/history/{id}` | Actualizează procesare cu OCR | Da (JWT) |
+| DELETE | `/api/history/{id}` | Șterge procesare din istoric | Da (JWT) |
 
 #### Logica Endpoint-urilor
 
@@ -171,6 +177,7 @@ def get_db():
 
 ### 3. **models.py** - Modele Bază de Date (SQLAlchemy ORM)
 
+**User Model**
 ```python
 class User(Base):
     __tablename__ = "users"
@@ -183,9 +190,29 @@ class User(Base):
     is_admin = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relații
+    image_history = relationship("ImageHistory", back_populates="user", cascade="all, delete-orphan")
 ```
 
-**Câmpuri:**
+**ImageHistory Model**
+```python
+class ImageHistory(Base):
+    __tablename__ = "image_history"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    original_image = Column(Text, nullable=False)  # Base64
+    reconstructed_image = Column(Text, nullable=True)  # Base64
+    ocr_text_original = Column(String, nullable=True)
+    ocr_text_reconstructed = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relații
+    user = relationship("User", back_populates="image_history")
+```
+
+**Câmpuri User:**
 - `id`: Primary key, auto-increment
 - `email`: Unic, indexat pentru căutări rapide
 - `username`: Unic, indexat, case-insensitive
@@ -194,6 +221,15 @@ class User(Base):
 - `is_admin`: Role-based access control
 - `created_at`: Timestamp automat la creare
 - `updated_at`: Timestamp automat la modificare
+
+**Câmpuri ImageHistory:**
+- `id`: Primary key, auto-increment
+- `user_id`: Foreign key către users (cascade delete)
+- `original_image`: Imagine originală (base64 în Text field)
+- `reconstructed_image`: Imagine reconstruită (base64, nullable)
+- `ocr_text_original`: Text OCR din imagine originală (nullable)
+- `ocr_text_reconstructed`: Text OCR din imagine reconstruită (nullable)
+- `created_at`: Timestamp automat la creare
 
 ### 4. **schemas.py** - Validare și Serializare (Pydantic)
 
@@ -229,6 +265,34 @@ class UserResponse(BaseModel):
 class Token(BaseModel):
     access_token: str  # JWT token
     token_type: str    # "bearer"
+```
+
+**ImageHistoryCreate** - Input pentru salvare istoric
+```python
+class ImageHistoryCreate(BaseModel):
+    original_image: str  # Base64 encoded
+    reconstructed_image: Optional[str] = None  # Base64, nullable
+    ocr_text_original: Optional[str] = None
+    ocr_text_reconstructed: Optional[str] = None
+```
+
+**ImageHistoryResponse** - Output istoric individual
+```python
+class ImageHistoryResponse(BaseModel):
+    id: int
+    user_id: int
+    original_image: str
+    reconstructed_image: Optional[str]
+    ocr_text_original: Optional[str]
+    ocr_text_reconstructed: Optional[str]
+    created_at: datetime
+```
+
+**ImageHistoryList** - Listă istoric
+```python
+class ImageHistoryList(BaseModel):
+    items: List[ImageHistoryResponse]
+    total: int
 ```
 
 ### 5. **auth.py** - Sistem de Autentificare
@@ -287,15 +351,19 @@ def get_current_user(token: str = Depends(oauth2_scheme),
 frontend/
 ├── src/
 │   ├── components/
-│   │   └── PrivateRoute.jsx    # HOC pentru rute protejate
+│   │   ├── PrivateRoute.jsx    # HOC pentru rute protejate
+│   │   └── ImageUploader.jsx   # Component upload/reconstrucție
 │   ├── contexts/
 │   │   └── AuthContext.jsx     # State management autentificare
 │   ├── pages/
 │   │   ├── Login.jsx           # Pagină login
 │   │   ├── Register.jsx        # Pagină înregistrare
 │   │   ├── Dashboard.jsx       # Pagină dashboard (protejată)
+│   │   ├── Metrics.jsx         # Pagină metrici cu PDF viewer
+│   │   ├── History.jsx         # Pagină istoric procesări
 │   │   ├── Auth.css            # Stiluri autentificare
-│   │   └── Dashboard.css       # Stiluri dashboard
+│   │   ├── Dashboard.css       # Stiluri dashboard
+│   │   └── History.css         # Stiluri istoric
 │   ├── App.jsx                 # Componenta principală
 │   ├── App.css                 # Stiluri globale
 │   ├── main.jsx                # Entry point
@@ -318,6 +386,16 @@ function App() {
           <Route path="/dashboard" element={
             <PrivateRoute>   {/* Protecție rută */}
               <Dashboard />
+            </PrivateRoute>
+          }/>
+          <Route path="/metrics" element={
+            <PrivateRoute>
+              <Metrics />
+            </PrivateRoute>
+          }/>
+          <Route path="/history" element={
+            <PrivateRoute>
+              <History />
             </PrivateRoute>
           }/>
           <Route path="/" element={<Navigate to="/dashboard" />} />

@@ -94,29 +94,88 @@ chmod +x start.sh
 
 ## 🐳 Metoda 2: Docker Compose (TOTUL în Docker)
 
-### Setup
+### Pornire Full Docker (Production-ready)
+
+Pornește Frontend + Backend + PostgreSQL toate în Docker:
+
 ```powershell
-# Prima dată: build images (Frontend + Backend + PostgreSQL)
-docker-compose build
+# Build și pornire toate serviciile
+docker-compose up --build
 
-# Pornire TOTUL (3 containere)
+# SAU în background (daemon)
+docker-compose up -d --build
+```
+
+**Avantaje:**
+- 🐳 Environment consistent
+- 🔒 Izolare completă
+- 🚀 Production-ready
+
+### docker-compose.yml Explicat
+
+Fișierul conține 3 servicii:
+
+1. **postgres** - PostgreSQL 15 database
+2. **backend** - FastAPI application + TensorFlow + fast-plate-ocr
+3. **frontend** - React + Vite application
+
+**Pornire Selectivă:**
+
+```powershell
+# Doar PostgreSQL (folosit de start.ps1)
+docker-compose up -d postgres
+
+# Toate serviciile (Frontend + Backend + PostgreSQL)
 docker-compose up -d
-
-# Verificare logs
-docker-compose logs -f
-
-# Logs pentru un serviciu specific
-docker-compose logs -f frontend
-docker-compose logs -f backend
-
-# Oprire
-docker-compose down
 ```
 
 **Containere create:**
-- `lpr_postgres` - PostgreSQL database
-- `lpr_backend` - FastAPI backend
-- `lpr_frontend` - React + Vite frontend
+- `lpr_postgres` - PostgreSQL 15 database
+- `lpr_backend` - FastAPI backend (Python 3.12) + TensorFlow + fast-plate-ocr
+- `lpr_frontend` - React + Vite frontend (Node.js 18)
+
+**Backend ML Dependencies:**
+- TensorFlow 2.20.0 (Pix2Pix model pentru reconstrucție imagini)
+- fast-plate-ocr 1.0.2 (OCR pentru plăcuțe de înmatriculare)
+- onnxruntime (Fast inference pentru OCR)
+- OpenCV, NumPy, Pillow (procesare imagini)
+
+**Database settings:**
+- Port: 5432
+- User: `lpr_user`
+- Password: `lpr_password_change_in_production` (configurabil în `.env.docker`)
+- Database: `lpr_database`
+- Volume persistent: `postgres_data`
+
+### Verificare Containere
+
+```powershell
+# Verifică ce containere rulează
+docker ps
+
+# Verifică logs pentru toate serviciile
+docker-compose logs -f
+
+# Logs pentru un serviciu specific
+docker-compose logs -f postgres
+docker-compose logs -f backend
+docker-compose logs -f frontend
+```
+
+### URLs când toate serviciile rulează
+
+- 🌐 Frontend: http://localhost:3000
+- 🔥 Backend API: http://localhost:8000
+- 📚 API Docs: http://localhost:8000/docs
+- 🗄️ PostgreSQL: localhost:5432
+
+**Funcționalități disponibile:**
+- ✅ Autentificare (Login/Register cu JWT)
+- ✅ Upload și reconstrucție imagini cu Pix2Pix
+- ✅ OCR pentru extragere text din plăcuțe
+- ✅ Vizualizare rapoarte PDF (OCR results, PSNR/SSIM metrics)
+- ✅ Istoric procesări (ultimele 10 imagini cu rezultate OCR)
+- ✅ Dashboard protejat cu informații utilizator
 
 ### Avantaje
 ✅ Environment consistent (același Python, dependencies)  
@@ -135,6 +194,151 @@ docker-compose down
 docker-compose restart frontend  # ❌ NU se vede schimbarea!
 docker-compose up -d --build frontend  # ✅ Rebuild necesar
 ```
+
+### Oprire Servicii Docker
+```powershell
+# Stop toate serviciile (păstrează datele)
+docker-compose down
+
+# Stop și șterge datele (ATENȚIE: șterge baza de date!)
+docker-compose down -v
+```
+
+---
+
+## 🔄 Hot Reload și Modificări Cod
+
+### ⭐ Cu start.ps1/start.sh (Development) - HOT RELOAD COMPLET
+
+**Frontend (React + Vite):**
+- ✅ **Hot reload INSTANT**
+- Modifici orice fișier `.jsx`, `.css`, `.tsx`, etc.
+- Vite detectează automat schimbările
+- Browser-ul se reîncarcă automat (< 1 secundă)
+- **NU trebuie să repornești nimic!**
+
+**Backend (FastAPI + Uvicorn):**
+- ✅ **Auto-reload INSTANT**
+- Modifici orice fișier `.py`
+- Uvicorn rulează cu flag `--reload`
+- Backend-ul se repornește automat (2-3 secunde)
+- Vezi în terminal: `INFO: Application startup complete`
+- **NU trebuie să repornești manual!**
+- **Notă:** Modelele ML (Pix2Pix + OCR) se reîncarcă automat la restart
+
+**PostgreSQL:**
+- ✅ Datele persistă în volume Docker `postgres_data`
+- Schimbările în schema (models.py) se aplică automat via SQLAlchemy
+
+### ⚠️ Cu docker-compose up (Production) - REBUILD NECESAR
+
+**Problemă:** Codul este copiat în imagine la build. Modificările locale NU se reflectă automat.
+
+**După modificări în Frontend:**
+```powershell
+# Restart simplu NU e suficient!
+docker-compose restart frontend  # ❌ Nu funcționează
+
+# Trebuie REBUILD:
+docker-compose up -d --build frontend  # ✅ Corect
+```
+
+**După modificări în Backend:**
+```powershell
+# Trebuie REBUILD:
+docker-compose up -d --build backend  # ✅ Corect
+
+# SAU rebuild ambele:
+docker-compose up -d --build
+```
+
+**De ce?** Dockerfile-urile copiază codul la build (`COPY . /app`). Modificările ulterioare din filesystem-ul local nu afectează containerele care rulează.
+
+### 📊 Comparație Hot Reload
+
+| Aspect | start.ps1/start.sh | docker-compose up |
+|--------|-----------|-------------------|
+| **Frontend changes** | ⚡ Instant (< 1s) | 🔄 Rebuild (~10-15s) |
+| **Backend changes** | ⚡ Auto-reload (2-3s) | 🔄 Rebuild (~5-10s) |
+| **CSS/Style changes** | ⚡ Instant | 🔄 Rebuild |
+| **Dependencies (npm/pip)** | 🔄 Reinstall manual | 🔄 Rebuild image |
+| **ML Models** | ⚡ Auto-reload la restart | 🔄 Rebuild image |
+| **Workflow** | ✅ Edit → Save → See | ⚠️ Edit → Build → Wait |
+| **Platforme** | ✅ Windows, Linux, macOS | ✅ Windows, Linux, macOS |
+
+---
+
+## 🛠️ Comenzi Utile Docker
+
+### Acces la PostgreSQL CLI
+```powershell
+docker exec -it lpr_postgres psql -U lpr_user -d lpr_database
+```
+
+Comenzi utile în psql:
+```sql
+-- Listare tabele
+\dt
+
+-- Descriere tabelă users
+\d users
+
+-- Descriere tabelă image_history
+\d image_history
+
+-- Listare utilizatori
+SELECT * FROM users;
+
+-- Listare istoric
+SELECT id, user_id, created_at, ocr_text_original FROM image_history;
+
+-- Ieșire
+\q
+```
+
+### Vizualizare Logs Real-time
+```powershell
+# Logs pentru PostgreSQL
+docker-compose logs -f postgres
+
+# Logs pentru toate serviciile
+docker-compose logs -f
+```
+
+### Monitoring și Backup
+
+**Verificare Conexiuni Active:**
+```powershell
+docker exec -it lpr_postgres psql -U lpr_user -d lpr_database -c "SELECT count(*) FROM pg_stat_activity;"
+```
+
+**Dimensiune Bază de Date:**
+```powershell
+docker exec -it lpr_postgres psql -U lpr_user -d lpr_database -c "SELECT pg_size_pretty(pg_database_size('lpr_database'));"
+```
+
+**Backup Bază de Date:**
+```powershell
+# Backup
+docker exec lpr_postgres pg_dump -U lpr_user lpr_database > backup.sql
+
+# Restore
+type backup.sql | docker exec -i lpr_postgres psql -U lpr_user lpr_database
+```
+
+### Volume și Persistență
+
+Datele sunt stocate în volume Docker numit `postgres_data`:
+
+```powershell
+# Listare volumes
+docker volume ls
+
+# Inspecție volume
+docker volume inspect license-plate-reconstruction_postgres_data
+```
+
+**Important**: Atâta timp cât volume-ul există, datele vor persista chiar dacă oprești sau ștergi containerul.
 
 ---
 
@@ -284,10 +488,13 @@ INFO:     Uvicorn running on http://0.0.0.0:8000
 ```powershell
 cd backend
 python -m venv venv
-.\venv\Scripts\Activate.ps1
+.\venv\Scripts\Activate.ps1  # Windows
+# SAU
+source venv/bin/activate  # Linux/macOS
 pip install -r requirements.txt
 cd ..
-.\start.ps1
+.\start.ps1  # Windows
+./start.sh  # Linux/macOS
 ```
 
 ### Eroare: "PostgreSQL failed to start"
@@ -300,13 +507,53 @@ docker-compose restart postgres
 
 # SAU recreează
 docker-compose down
-docker-compose up -d
+docker-compose up -d postgres
 ```
 
 ### Backend nu se conectează la PostgreSQL
 ```powershell
+# Verifică dacă PostgreSQL este ready
+docker exec lpr_postgres pg_isready -U lpr_user
+
+# Testează conexiunea
+docker exec -it lpr_postgres psql -U lpr_user -d lpr_database -c "SELECT 1;"
+
 # Verifică DATABASE_URL în backend/.env
 # Trebuie să match-uiască cu .env.docker
+```
+
+### Serviciile Docker nu pornesc
+```powershell
+# Verifică logs pentru erori
+docker-compose logs
+
+# Logs pentru un serviciu specific
+docker-compose logs postgres
+docker-compose logs backend
+docker-compose logs frontend
+
+# Verifică dacă porturile sunt libere
+netstat -ano | findstr :5432   # PostgreSQL
+netstat -ano | findstr :8000   # Backend
+netstat -ano | findstr :3000   # Frontend
+```
+
+### Resetare completă
+```powershell
+# Windows
+.\stop.ps1 -RemoveData
+
+# Linux/macOS
+./stop.sh --remove-data
+
+# SAU manual
+docker-compose down -v
+
+# Pornește din nou
+.\start.ps1  # Windows
+./start.sh  # Linux/macOS
+
+# Backend va recrea tabelele automat
 ```
 
 ---

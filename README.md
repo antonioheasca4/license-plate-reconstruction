@@ -31,7 +31,9 @@ license-plate-reconstruction/
 │   │   ├── pages/          # Page components
 │   │   │   ├── Login.jsx
 │   │   │   ├── Register.jsx
-│   │   │   └── Dashboard.jsx  # Main app with upload
+│   │   │   ├── Dashboard.jsx  # Main app with upload
+│   │   │   ├── Metrics.jsx     # Model metrics & PDF reports
+│   │   │   └── History.jsx     # Processing history viewer
 │   │   ├── App.jsx         # Main app component
 │   │   └── main.jsx        # Entry point
 │   ├── package.json        # Node dependencies
@@ -42,12 +44,12 @@ license-plate-reconstruction/
 ├── docker-compose.yml      # Docker orchestration (3 services)
 ├── .env.docker             # Docker environment variables
 ├── .env.docker.example     # Docker env template
-├── start.ps1               # Start script (Development)
-├── start.bat               # Windows batch wrapper
-├── stop.ps1                # Stop script
-├── stop.bat                # Windows batch wrapper
-├── AUTOMATION_GUIDE.md     # Automation documentation
-├── README_DOCKER.md        # Docker setup guide
+├── start.ps1               # Start script (Windows/Development)
+├── start.sh                # Start script (Linux/macOS/Development)
+├── stop.ps1                # Stop script (Windows)
+├── stop.sh                 # Stop script (Linux/macOS)
+├── AUTOMATION_GUIDE.md     # Automation & Docker documentation
+├── ARCHITECTURE.md         # System architecture diagrams
 └── ENV_BEST_PRACTICES.md   # Security best practices
 ```
 
@@ -63,12 +65,15 @@ license-plate-reconstruction/
 - ✅ **Real-time Inference**: Process images and view reconstructed results instantly
 - ✅ **Side-by-Side Comparison**: Visual comparison of original vs reconstructed images
 - ✅ **OCR on Both Images**: Run OCR on original and reconstructed plates to compare accuracy
+- ✅ **Processing History**: View last 10 processed images with OCR results
+- ✅ **Persistent State**: Images and OCR results persist when navigating between pages
+- ✅ **History Management**: Delete individual history items, update with new OCR results
 - ✅ **Modern UI**: Responsive React interface with custom styling
 - ✅ **CORS Configured**: Secure cross-origin resource sharing
 - ✅ **Docker Support**: Full containerization with docker-compose
 - ✅ **Automation Scripts**: One-command start/stop for development
 - ✅ **Hot Reload**: Instant updates during development (frontend & backend)
-- 🔄 **Coming Soon**: Results history, model fine-tuning, batch processing
+- 🔄 **Coming Soon**: Model fine-tuning, batch processing, export results
 
 ## 🚀 Prerequisites
 
@@ -343,6 +348,10 @@ Once logged in:
 - `POST /api/inference` - Upload and reconstruct license plate image
 - `POST /api/ocr` - Extract text from license plate image using OCR
 - `GET /api/model/status` - Check ML models status (Pix2Pix + OCR)
+- `POST /api/history` - Save image processing history (auto-saved after reconstruction)
+- `GET /api/history?limit=10` - Get user's processing history (default: last 10 items)
+- `PUT /api/history/{history_id}` - Update history item with new OCR results
+- `DELETE /api/history/{history_id}` - Delete specific history item
 
 ### Using the API (cURL Examples)
 
