@@ -1,19 +1,80 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import './ImageUploader.css';
 
 const ImageUploader = () => {
   const [selectedFile, setSelectedFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const [reconstructedUrl, setReconstructedUrl] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(() => localStorage.getItem('lpr_previewUrl') || null);
+  const [reconstructedUrl, setReconstructedUrl] = useState(() => localStorage.getItem('lpr_reconstructedUrl') || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
-  const [ocrOriginal, setOcrOriginal] = useState('');
-  const [ocrReconstructed, setOcrReconstructed] = useState('');
+  const [ocrOriginal, setOcrOriginal] = useState(() => localStorage.getItem('lpr_ocrOriginal') || '');
+  const [ocrReconstructed, setOcrReconstructed] = useState(() => localStorage.getItem('lpr_ocrReconstructed') || '');
+  const [currentHistoryId, setCurrentHistoryId] = useState(() => {
+    const saved = localStorage.getItem('lpr_currentHistoryId');
+    return saved ? parseInt(saved) : null;
+  });
   const fileInputRef = useRef(null);
+
+  // Reload from localStorage when component becomes visible (e.g., navigating back)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // Reload all data from localStorage when page becomes visible
+        const savedPreview = localStorage.getItem('lpr_previewUrl');
+        const savedReconstructed = localStorage.getItem('lpr_reconstructedUrl');
+        const savedOcrOriginal = localStorage.getItem('lpr_ocrOriginal');
+        const savedOcrReconstructed = localStorage.getItem('lpr_ocrReconstructed');
+        const savedHistoryId = localStorage.getItem('lpr_currentHistoryId');
+        
+        if (savedPreview) setPreviewUrl(savedPreview);
+        if (savedReconstructed) setReconstructedUrl(savedReconstructed);
+        if (savedOcrOriginal) setOcrOriginal(savedOcrOriginal);
+        if (savedOcrReconstructed) setOcrReconstructed(savedOcrReconstructed);
+        if (savedHistoryId) setCurrentHistoryId(parseInt(savedHistoryId));
+      }
+    };
+
+    // Also reload when component mounts
+    handleVisibilityChange();
+
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleVisibilityChange);
+    
+    return () => {
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
+    };
+  }, []);
+
+  // Save to localStorage whenever state changes
+  useEffect(() => {
+    if (previewUrl) localStorage.setItem('lpr_previewUrl', previewUrl);
+    else localStorage.removeItem('lpr_previewUrl');
+  }, [previewUrl]);
+
+  useEffect(() => {
+    if (reconstructedUrl) localStorage.setItem('lpr_reconstructedUrl', reconstructedUrl);
+    else localStorage.removeItem('lpr_reconstructedUrl');
+  }, [reconstructedUrl]);
+
+  useEffect(() => {
+    if (ocrOriginal) localStorage.setItem('lpr_ocrOriginal', ocrOriginal);
+    else localStorage.removeItem('lpr_ocrOriginal');
+  }, [ocrOriginal]);
+
+  useEffect(() => {
+    if (ocrReconstructed) localStorage.setItem('lpr_ocrReconstructed', ocrReconstructed);
+    else localStorage.removeItem('lpr_ocrReconstructed');
+  }, [ocrReconstructed]);
+
+  useEffect(() => {
+    if (currentHistoryId) localStorage.setItem('lpr_currentHistoryId', currentHistoryId.toString());
+    else localStorage.removeItem('lpr_currentHistoryId');
+  }, [currentHistoryId]);
 
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
@@ -90,9 +151,39 @@ const ImageUploader = () => {
 
       // Create URL for the reconstructed image
       const imageBlob = new Blob([response.data], { type: 'image/png' });
-      const imageUrl = URL.createObjectURL(imageBlob);
-      setReconstructedUrl(imageUrl);
-      setSuccess('Image reconstructed successfully!');
+      
+      // Convert to base64 for both display and storage
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const reconstructedBase64 = reader.result;
+        setReconstructedUrl(reconstructedBase64); // Save base64 instead of blob URL
+        setSuccess('Image reconstructed successfully!');
+        
+        // Save to history immediately after reconstruction
+        try {
+          const token = localStorage.getItem('token');
+          const historyData = {
+            original_image: previewUrl,
+            reconstructed_image: reconstructedBase64,
+            ocr_text_original: null,
+            ocr_text_reconstructed: null
+          };
+          
+          const historyResponse = await axios.post('/api/history', historyData, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          // Save the ID for future OCR updates
+          setCurrentHistoryId(historyResponse.data.id);
+          console.log('Saved to history after reconstruction, ID:', historyResponse.data.id);
+        } catch (err) {
+          console.error('Failed to save to history:', err);
+        }
+      };
+      reader.readAsDataURL(imageBlob);
 
     } catch (err) {
       console.error('Upload error:', err);
@@ -125,6 +216,15 @@ const ImageUploader = () => {
     setSuccess('');
     setOcrOriginal('');
     setOcrReconstructed('');
+    setCurrentHistoryId(null);
+    
+    // Clear localStorage
+    localStorage.removeItem('lpr_previewUrl');
+    localStorage.removeItem('lpr_reconstructedUrl');
+    localStorage.removeItem('lpr_ocrOriginal');
+    localStorage.removeItem('lpr_ocrReconstructed');
+    localStorage.removeItem('lpr_currentHistoryId');
+    
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -158,11 +258,16 @@ const ImageUploader = () => {
         }
       });
 
+      const ocrText = ocrResponse.data.text || 'No text detected';
+      
       if (imageSource === 'original') {
-        setOcrOriginal(ocrResponse.data.text || 'No text detected');
+        setOcrOriginal(ocrText);
       } else {
-        setOcrReconstructed(ocrResponse.data.text || 'No text detected');
+        setOcrReconstructed(ocrText);
       }
+
+      // Save to history with current OCR results
+      await saveToHistoryWithOCR(imageSource, ocrText);
 
     } catch (err) {
       console.error('OCR error:', err);
@@ -173,6 +278,97 @@ const ImageUploader = () => {
       }
     } finally {
       setOcrLoading(false);
+    }
+  };
+
+  const saveToHistory = async () => {
+    if (!previewUrl) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Convert blob URL to base64 if reconstructed image exists
+      let reconstructedBase64 = null;
+      if (reconstructedUrl) {
+        const response = await fetch(reconstructedUrl);
+        const blob = await response.blob();
+        reconstructedBase64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      }
+      
+      const historyData = {
+        original_image: previewUrl,
+        reconstructed_image: reconstructedBase64,
+        ocr_text_original: ocrOriginal || null,
+        ocr_text_reconstructed: ocrReconstructed || null
+      };
+
+      await axios.post('/api/history', historyData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('Saved to history successfully');
+    } catch (err) {
+      console.error('Failed to save to history:', err);
+      // Don't show error to user, this is a background operation
+    }
+  };
+
+  const saveToHistoryWithOCR = async (imageSource, ocrText) => {
+    if (!previewUrl) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Convert blob URL to base64 if reconstructed image exists
+      let reconstructedBase64 = null;
+      if (reconstructedUrl) {
+        const response = await fetch(reconstructedUrl);
+        const blob = await response.blob();
+        reconstructedBase64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      }
+      
+      const historyData = {
+        original_image: previewUrl,
+        reconstructed_image: reconstructedBase64,
+        ocr_text_original: imageSource === 'original' ? ocrText : (ocrOriginal || null),
+        ocr_text_reconstructed: imageSource === 'reconstructed' ? ocrText : (ocrReconstructed || null)
+      };
+
+      // If we already have a history ID, update it instead of creating new
+      if (currentHistoryId) {
+        await axios.put(`/api/history/${currentHistoryId}`, historyData, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        console.log('Updated history with OCR successfully');
+      } else {
+        const response = await axios.post('/api/history', historyData, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        // Save the ID for future updates
+        setCurrentHistoryId(response.data.id);
+        console.log('Saved to history with OCR successfully, ID:', response.data.id);
+      }
+
+    } catch (err) {
+      console.error('Failed to save to history:', err);
+      // Don't show error to user, this is a background operation
     }
   };
 

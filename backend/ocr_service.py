@@ -81,10 +81,16 @@ def run_ocr(image_bytes: bytes) -> dict:
         # Rulează OCR pe numpy array
         result = recognizer.run(image_array)
         
-        logger.info(f"OCR completed successfully! Text: {result}")
+        # Curăță rezultatul: elimină underscore-uri
+        if isinstance(result, list) and len(result) > 0:
+            cleaned_result = [text.replace('_', '') for text in result]
+        else:
+            cleaned_result = result
+        
+        logger.info(f"OCR completed successfully! Text: {cleaned_result}")
         
         return {
-            "text": result,
+            "text": cleaned_result,
             "success": True
         }
         

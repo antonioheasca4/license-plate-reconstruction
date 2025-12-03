@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Metrics from './pages/Metrics';
+import History from './pages/History';
 import PrivateRoute from './components/PrivateRoute';
 import './App.css';
 
@@ -28,6 +29,14 @@ function App() {
               element={
                 <PrivateRoute>
                   <Metrics />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/history"
+              element={
+                <PrivateRoute>
+                  <History />
                 </PrivateRoute>
               }
             />

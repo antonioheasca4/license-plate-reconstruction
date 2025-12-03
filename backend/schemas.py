@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 import re
 
 
@@ -40,3 +40,28 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     email: Optional[str] = None
+
+
+class ImageHistoryCreate(BaseModel):
+    original_image: str
+    reconstructed_image: Optional[str] = None
+    ocr_text_original: Optional[str] = None
+    ocr_text_reconstructed: Optional[str] = None
+
+
+class ImageHistoryResponse(BaseModel):
+    id: int
+    user_id: int
+    original_image: str
+    reconstructed_image: Optional[str] = None
+    ocr_text_original: Optional[str] = None
+    ocr_text_reconstructed: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ImageHistoryList(BaseModel):
+    items: List[ImageHistoryResponse]
+    total: int

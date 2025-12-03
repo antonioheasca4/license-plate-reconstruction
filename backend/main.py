@@ -8,8 +8,8 @@ from typing import Annotated
 import logging
 
 from database import get_db, engine, Base
-from models import User
-from schemas import UserCreate, UserResponse, Token
+from models import User, ImageHistory
+from schemas import UserCreate, UserResponse, Token, ImageHistoryCreate, ImageHistoryResponse, ImageHistoryList
 from auth import (
     get_password_hash,
     verify_password,
@@ -254,9 +254,16 @@ async def ocr_image(
         # Run OCR
         result = run_ocr(contents)
         
-        logger.info(f"OCR successful for user {current_user.username}: {result['text']}")
+        # Convert array to string if needed
+        text_result = result['text']
+        if isinstance(text_result, list) and len(text_result) > 0:
+            text_result = text_result[0]  # Take first result
+        elif isinstance(text_result, list):
+            text_result = ""
         
-        return result
+        logger.info(f"OCR successful for user {current_user.username}: {text_result}")
+        
+        return {"text": text_result, "success": True}
         
     except Exception as e:
         logger.error(f"Error during OCR: {str(e)}")
@@ -279,6 +286,152 @@ def model_status(current_user: User = Depends(get_current_user)):
         "ocr_model": "cct-xs-v1-global-model" if ocr_loaded else None,
         "status": "ready" if (pix2pix_loaded and ocr_loaded) else "partial" if (pix2pix_loaded or ocr_loaded) else "not_loaded"
     }
+
+
+@app.post("/api/history", response_model=ImageHistoryResponse, status_code=status.HTTP_201_CREATED)
+def save_history(
+    history_data: ImageHistoryCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Save image processing history for current user"""
+    try:
+        new_history = ImageHistory(
+            user_id=current_user.id,
+            original_image=history_data.original_image,
+            reconstructed_image=history_data.reconstructed_image,
+            ocr_text_original=history_data.ocr_text_original,
+            ocr_text_reconstructed=history_data.ocr_text_reconstructed
+        )
+        
+        db.add(new_history)
+        db.commit()
+        db.refresh(new_history)
+        
+        logger.info(f"History saved for user {current_user.username}, ID: {new_history.id}")
+        return new_history
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error saving history: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error saving history: {str(e)}"
+        )
+
+
+@app.get("/api/history", response_model=ImageHistoryList)
+def get_history(
+    limit: int = 10,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get image processing history for current user (latest 10 by default)"""
+    try:
+        # Get total count
+        total = db.query(ImageHistory).filter(ImageHistory.user_id == current_user.id).count()
+        
+        # Get history items, ordered by most recent first
+        history_items = (
+            db.query(ImageHistory)
+            .filter(ImageHistory.user_id == current_user.id)
+            .order_by(ImageHistory.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        
+        logger.info(f"Retrieved {len(history_items)} history items for user {current_user.username}")
+        
+        return ImageHistoryList(items=history_items, total=total)
+        
+    except Exception as e:
+        logger.error(f"Error retrieving history: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error retrieving history: {str(e)}"
+        )
+
+
+@app.delete("/api/history/{history_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_history(
+    history_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete a specific history item (only if it belongs to current user)"""
+    try:
+        history_item = (
+            db.query(ImageHistory)
+            .filter(ImageHistory.id == history_id, ImageHistory.user_id == current_user.id)
+            .first()
+        )
+        
+        if not history_item:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="History item not found"
+            )
+        
+        db.delete(history_item)
+        db.commit()
+        
+        logger.info(f"History item {history_id} deleted by user {current_user.username}")
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error deleting history: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting history: {str(e)}"
+        )
+
+
+@app.put("/api/history/{history_id}", response_model=ImageHistoryResponse)
+def update_history(
+    history_id: int,
+    history_data: ImageHistoryCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update a specific history item with new OCR results"""
+    try:
+        history_item = (
+            db.query(ImageHistory)
+            .filter(ImageHistory.id == history_id, ImageHistory.user_id == current_user.id)
+            .first()
+        )
+        
+        if not history_item:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="History item not found"
+            )
+        
+        # Update fields
+        history_item.original_image = history_data.original_image
+        history_item.reconstructed_image = history_data.reconstructed_image
+        history_item.ocr_text_original = history_data.ocr_text_original
+        history_item.ocr_text_reconstructed = history_data.ocr_text_reconstructed
+        
+        db.commit()
+        db.refresh(history_item)
+        
+        logger.info(f"History item {history_id} updated by user {current_user.username}")
+        return history_item
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating history: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating history: {str(e)}"
+        )
+
 
 
 if __name__ == "__main__":
