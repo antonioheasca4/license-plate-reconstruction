@@ -1,0 +1,10 @@
+{
+  "server_url": "http://localhost:8000",
+  "username": "aheasca",
+  "password": "parola",
+  "watch_folder": "./sample_images",
+  "results_folder": "./results",
+  "auto_ocr": true,
+  "save_results": true,
+  "log_level": "INFO"
+}

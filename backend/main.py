@@ -9,7 +9,7 @@ import logging
 
 from database import get_db, engine, Base
 from models import User, ImageHistory
-from schemas import UserCreate, UserResponse, Token, ImageHistoryCreate, ImageHistoryResponse, ImageHistoryList
+from schemas import UserCreate, UserResponse, Token, ImageHistoryCreate, ImageHistoryUpdate, ImageHistoryResponse, ImageHistoryList
 from auth import (
     get_password_hash,
     verify_password,
@@ -301,7 +301,8 @@ def save_history(
             original_image=history_data.original_image,
             reconstructed_image=history_data.reconstructed_image,
             ocr_text_original=history_data.ocr_text_original,
-            ocr_text_reconstructed=history_data.ocr_text_reconstructed
+            ocr_text_reconstructed=history_data.ocr_text_reconstructed,
+            source=history_data.source
         )
         
         db.add(new_history)
@@ -392,7 +393,7 @@ def delete_history(
 @app.put("/api/history/{history_id}", response_model=ImageHistoryResponse)
 def update_history(
     history_id: int,
-    history_data: ImageHistoryCreate,
+    history_data: ImageHistoryUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -410,11 +411,11 @@ def update_history(
                 detail="History item not found"
             )
         
-        # Update fields
-        history_item.original_image = history_data.original_image
-        history_item.reconstructed_image = history_data.reconstructed_image
-        history_item.ocr_text_original = history_data.ocr_text_original
-        history_item.ocr_text_reconstructed = history_data.ocr_text_reconstructed
+        # Update only OCR fields
+        if history_data.ocr_text_original is not None:
+            history_item.ocr_text_original = history_data.ocr_text_original
+        if history_data.ocr_text_reconstructed is not None:
+            history_item.ocr_text_reconstructed = history_data.ocr_text_reconstructed
         
         db.commit()
         db.refresh(history_item)

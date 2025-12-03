@@ -9,8 +9,8 @@ license-plate-reconstruction/
 ├── backend/                 # FastAPI backend
 │   ├── main.py             # Main application entry point
 │   ├── database.py         # Database configuration
-│   ├── models.py           # SQLAlchemy models
-│   ├── schemas.py          # Pydantic schemas
+│   ├── models.py           # SQLAlchemy models (User, ImageHistory with source field)
+│   ├── schemas.py          # Pydantic schemas (ImageHistoryUpdate for OCR)
 │   ├── auth.py             # Authentication logic
 │   ├── ocr_service.py      # OCR service for license plate text recognition
 │   ├── requirements.txt    # Python dependencies
@@ -33,7 +33,8 @@ license-plate-reconstruction/
 │   │   │   ├── Register.jsx
 │   │   │   ├── Dashboard.jsx  # Main app with upload
 │   │   │   ├── Metrics.jsx     # Model metrics & PDF reports
-│   │   │   └── History.jsx     # Processing history viewer
+│   │   │   ├── History.jsx     # Processing history with camera badge
+│   │   │   └── History.css     # Styles for camera badge
 │   │   ├── App.jsx         # Main app component
 │   │   └── main.jsx        # Entry point
 │   ├── package.json        # Node dependencies
@@ -41,11 +42,20 @@ license-plate-reconstruction/
 │   ├── Dockerfile          # Frontend Docker image
 │   └── .env               # Environment variables
 │
+├── camera_client/          # Camera simulator (Edge device simulation)
+│   ├── camera_simulator.py # Main client script with folder watching
+│   ├── config.json         # Configuration (credentials, folders)
+│   ├── requirements.txt    # Python dependencies (requests, watchdog)
+│   ├── sample_images/      # Monitored folder for new images
+│   ├── results/            # Local results (reconstructed images + OCR)
+│   ├── camera_client.log   # Detailed logs
+│   └── README.md           # Camera client documentation
+│
 ├── docker-compose.yml      # Docker orchestration (3 services)
 ├── .env.docker             # Docker environment variables
 ├── .env.docker.example     # Docker env template
-├── start.ps1               # Start script (Windows/Development)
-├── start.sh                # Start script (Linux/macOS/Development)
+├── start.ps1               # Start script (Windows) - auto-starts camera client
+├── start.sh                # Start script (Linux/macOS) - auto-starts camera client
 ├── stop.ps1                # Stop script (Windows)
 ├── stop.sh                 # Stop script (Linux/macOS)
 ├── AUTOMATION_GUIDE.md     # Automation & Docker documentation
@@ -55,23 +65,37 @@ license-plate-reconstruction/
 
 ## ✨ Features
 
+### Core Functionality
 - ✅ **User Authentication**: JWT-based authentication with secure password hashing (bcrypt)
 - ✅ **User Registration & Login**: Complete user management system
 - ✅ **Protected Routes**: Frontend and backend route protection
 - ✅ **PostgreSQL Database**: Robust relational database with SQLAlchemy ORM (Dockerized)
 - ✅ **License Plate Reconstruction**: Pix2Pix deep learning model for image enhancement
 - ✅ **OCR Text Recognition**: Fast-plate-ocr integration for license plate text extraction
+
+### Image Processing
 - ✅ **Image Upload**: Drag & drop or click to upload license plate images
 - ✅ **Real-time Inference**: Process images and view reconstructed results instantly
 - ✅ **Side-by-Side Comparison**: Visual comparison of original vs reconstructed images
 - ✅ **OCR on Both Images**: Run OCR on original and reconstructed plates to compare accuracy
 - ✅ **Processing History**: View last 10 processed images with OCR results
-- ✅ **Persistent State**: Images and OCR results persist when navigating between pages
+- ✅ **Source Tracking**: Distinguish between web uploads and camera client uploads with visual badge
 - ✅ **History Management**: Delete individual history items, update with new OCR results
+
+### Client-Server Architecture
+- ✅ **Camera Client Simulator**: Python script simulating embedded camera device
+- ✅ **Folder Watching**: Automatic detection of new images (watchdog library)
+- ✅ **Auto-processing**: Automatic reconstruction + OCR + database save for camera uploads
+- ✅ **Camera Badge**: Visual indicator in UI for camera-originated images (📷 Camera)
+- ✅ **Source Field**: Database tracks image source ("web" vs "camera")
+- ✅ **Backend Wait**: Camera client waits for backend availability before starting
+
+### Development & Deployment
 - ✅ **Modern UI**: Responsive React interface with custom styling
+- ✅ **Persistent State**: Images and OCR results persist when navigating between pages
 - ✅ **CORS Configured**: Secure cross-origin resource sharing
 - ✅ **Docker Support**: Full containerization with docker-compose
-- ✅ **Automation Scripts**: One-command start/stop for development
+- ✅ **Automation Scripts**: One-command start (frontend + backend + camera client)
 - ✅ **Hot Reload**: Instant updates during development (frontend & backend)
 - 🔄 **Coming Soon**: Model fine-tuning, batch processing, export results
 
@@ -348,9 +372,9 @@ Once logged in:
 - `POST /api/inference` - Upload and reconstruct license plate image
 - `POST /api/ocr` - Extract text from license plate image using OCR
 - `GET /api/model/status` - Check ML models status (Pix2Pix + OCR)
-- `POST /api/history` - Save image processing history (auto-saved after reconstruction)
-- `GET /api/history?limit=10` - Get user's processing history (default: last 10 items)
-- `PUT /api/history/{history_id}` - Update history item with new OCR results
+- `POST /api/history` - Save image processing history (auto-saved after reconstruction, accepts source field)
+- `GET /api/history?limit=10` - Get user's processing history (default: last 10 items, includes source field)
+- `PUT /api/history/{history_id}` - Update history item with OCR results (uses ImageHistoryUpdate schema)
 - `DELETE /api/history/{history_id}` - Delete specific history item
 
 ### Using the API (cURL Examples)

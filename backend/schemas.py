@@ -47,6 +47,13 @@ class ImageHistoryCreate(BaseModel):
     reconstructed_image: Optional[str] = None
     ocr_text_original: Optional[str] = None
     ocr_text_reconstructed: Optional[str] = None
+    source: str = "web"  # "web" or "camera"
+
+
+class ImageHistoryUpdate(BaseModel):
+    """Schema for updating only OCR results"""
+    ocr_text_original: Optional[str] = None
+    ocr_text_reconstructed: Optional[str] = None
 
 
 class ImageHistoryResponse(BaseModel):
@@ -56,6 +63,7 @@ class ImageHistoryResponse(BaseModel):
     reconstructed_image: Optional[str] = None
     ocr_text_original: Optional[str] = None
     ocr_text_reconstructed: Optional[str] = None
+    source: str
     created_at: datetime
 
     class Config:

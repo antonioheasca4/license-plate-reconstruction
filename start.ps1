@@ -63,15 +63,39 @@ $frontendJob = Start-Job -ScriptBlock {
 Write-Host "Frontend started in background" -ForegroundColor Green
 Start-Sleep -Seconds 2
 
+# Start Camera Client in background
+Write-Host ""
+Write-Host "Starting Camera Client Simulator..." -ForegroundColor Cyan
+
+if (-not (Test-Path "camera_client\venv")) {
+    Write-Host "Setting up camera client (first time)..." -ForegroundColor Yellow
+    Set-Location camera_client
+    python -m venv venv
+    & .\venv\Scripts\Activate.ps1
+    pip install -r requirements.txt
+    Set-Location ..
+}
+
+$cameraJob = Start-Job -ScriptBlock {
+    Set-Location $args[0]
+    Set-Location camera_client
+    & .\venv\Scripts\Activate.ps1
+    python camera_simulator.py 2>&1
+} -ArgumentList $PWD
+
+Write-Host "Camera Client started in background" -ForegroundColor Green
+Start-Sleep -Seconds 1
+
 # Start Backend in foreground
 Write-Host ""
 Write-Host "Starting FastAPI Backend..." -ForegroundColor Cyan
 Write-Host "-------------------------------------------------------" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "URLs:" -ForegroundColor White
-Write-Host "   Frontend:  http://localhost:3000" -ForegroundColor Cyan
-Write-Host "   Backend:   http://localhost:8000" -ForegroundColor Cyan
-Write-Host "   API Docs:  http://localhost:8000/docs" -ForegroundColor Cyan
+Write-Host "   Frontend:     http://localhost:3000" -ForegroundColor Cyan
+Write-Host "   Backend:      http://localhost:8000" -ForegroundColor Cyan
+Write-Host "   API Docs:     http://localhost:8000/docs" -ForegroundColor Cyan
+Write-Host "   Camera Watch: camera_client\sample_images\" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Press Ctrl+C to stop everything..." -ForegroundColor DarkGray
 Write-Host ""
@@ -84,6 +108,10 @@ try {
 } finally {
     Write-Host ""
     Write-Host "Shutting down..." -ForegroundColor Yellow
+    
+    Write-Host "Stopping camera client..." -ForegroundColor Yellow
+    Stop-Job $cameraJob -ErrorAction SilentlyContinue
+    Remove-Job $cameraJob -ErrorAction SilentlyContinue
     
     Write-Host "Stopping frontend..." -ForegroundColor Yellow
     Stop-Job $frontendJob -ErrorAction SilentlyContinue

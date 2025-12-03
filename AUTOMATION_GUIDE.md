@@ -42,13 +42,15 @@ chmod +x start.sh
 2. ✅ Pornește PostgreSQL container (dacă nu rulează)
 3. ✅ Așteaptă PostgreSQL să fie ready
 4. ✅ Pornește React Frontend (background, port 3000)
-5. ✅ Pornește FastAPI Backend (foreground, port 8000)
-6. ✅ Afișează toate URL-urile
+5. ✅ Pornește Camera Client Simulator (background, monitorizează sample_images/)
+6. ✅ Pornește FastAPI Backend (foreground, port 8000)
+7. ✅ Afișează toate URL-urile
 
 **URLs după pornire:**
 - 🌐 Frontend: http://localhost:3000
 - 🔥 Backend: http://localhost:8000
 - 📚 API Docs: http://localhost:8000/docs
+- 📷 Camera Watch: camera_client/sample_images/ (auto-processes new images)
 
 ### Oprire Aplicație
 
@@ -426,7 +428,7 @@ powershell.exe -ExecutionPolicy Bypass -File .\start.ps1
 **Output:**
 ```
 🚀 Starting License Plate Reconstruction System...
-   (Frontend + Backend + PostgreSQL)
+   (Frontend + Backend + Camera Client + PostgreSQL)
 
 📦 Checking Docker...
 ✅ Docker is running
@@ -437,13 +439,17 @@ powershell.exe -ExecutionPolicy Bypass -File .\start.ps1
 ⚛️  Starting React Frontend...
 ✅ Frontend started in background
 
+📷 Starting Camera Client Simulator...
+✅ Camera Client started in background
+
 🔥 Starting FastAPI Backend...
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 🌐 URLs:
-   Frontend:  http://localhost:3000
-   Backend:   http://localhost:8000
-   API Docs:  http://localhost:8000/docs
+   Frontend:     http://localhost:3000
+   Backend:      http://localhost:8000
+   API Docs:     http://localhost:8000/docs
+   Camera Watch: camera_client/sample_images/
 
 Press Ctrl+C to stop everything...
 

@@ -107,6 +107,9 @@ function History() {
           {history.map((item, index) => (
             <div key={item.id} className="history-card">
               <div className="history-number">#{history.length - index}</div>
+              {item.source === 'camera' && (
+                <div className="camera-badge">📷 Camera</div>
+              )}
               
               <div className="card-images">
                 <div className="image-preview">

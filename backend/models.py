@@ -32,10 +32,11 @@ class ImageHistory(Base):
     reconstructed_image = Column(Text, nullable=True)  # Base64 encoded
     ocr_text_original = Column(String, nullable=True)
     ocr_text_reconstructed = Column(String, nullable=True)
+    source = Column(String, default="web", nullable=False)  # "web" or "camera"
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationship
     user = relationship("User", back_populates="image_history")
 
     def __repr__(self):
-        return f"<ImageHistory(id={self.id}, user_id={self.user_id}, created_at={self.created_at})>"
+        return f"<ImageHistory(id={self.id}, user_id={self.user_id}, source={self.source}, created_at={self.created_at})>"

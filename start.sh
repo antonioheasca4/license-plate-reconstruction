@@ -61,15 +61,38 @@ cd ..
 echo -e "\033[32mFrontend started in background (PID: $FRONTEND_PID)\033[0m"
 sleep 2
 
+# Start Camera Client in background
+echo ""
+echo -e "\033[36mStarting Camera Client Simulator...\033[0m"
+
+if [ ! -d "camera_client/venv" ]; then
+    echo -e "\033[33mSetting up camera client (first time)...\033[0m"
+    cd camera_client
+    python3 -m venv venv
+    source venv/bin/activate
+    pip install -r requirements.txt
+    cd ..
+fi
+
+cd camera_client
+source venv/bin/activate
+python camera_simulator.py > /dev/null 2>&1 &
+CAMERA_PID=$!
+cd ..
+
+echo -e "\033[32mCamera Client started in background (PID: $CAMERA_PID)\033[0m"
+sleep 1
+
 # Start Backend in foreground
 echo ""
 echo -e "\033[36mStarting FastAPI Backend...\033[0m"
 echo -e "\033[36m-------------------------------------------------------\033[0m"
 echo ""
 echo -e "\033[37mURLs:\033[0m"
-echo -e "\033[36m   Frontend:  http://localhost:3000\033[0m"
-echo -e "\033[36m   Backend:   http://localhost:8000\033[0m"
-echo -e "\033[36m   API Docs:  http://localhost:8000/docs\033[0m"
+echo -e "\033[36m   Frontend:     http://localhost:3000\033[0m"
+echo -e "\033[36m   Backend:      http://localhost:8000\033[0m"
+echo -e "\033[36m   API Docs:     http://localhost:8000/docs\033[0m"
+echo -e "\033[36m   Camera Watch: camera_client/sample_images/\033[0m"
 echo ""
 echo -e "\033[90mPress Ctrl+C to stop everything...\033[0m"
 echo ""
@@ -78,6 +101,9 @@ echo ""
 cleanup() {
     echo ""
     echo -e "\033[33mShutting down...\033[0m"
+    
+    echo -e "\033[33mStopping camera client...\033[0m"
+    kill $CAMERA_PID 2>/dev/null
     
     echo -e "\033[33mStopping frontend...\033[0m"
     kill $FRONTEND_PID 2>/dev/null

@@ -1,0 +1,11 @@
+# Logs
+camera_client.log
+*.log
+
+# Results folder (generated files - images, OCR JSON)
+results/
+
+# Sample images (user test files)
+sample_images/*.jpg
+sample_images/*.png
+sample_images/*.jpeg
