@@ -2,8 +2,10 @@
 camera_client.log
 *.log
 
-# Results folder (generated files - images, OCR JSON)
-results/
+# Results files (generated files - ocr json, reconstructed images)
+results/*.json
+results/*.png
+
 
 # Sample images (user test files)
 sample_images/*.jpg

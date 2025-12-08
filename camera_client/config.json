@@ -1,6 +1,6 @@
 {
   "server_url": "http://localhost:8000",
-  "username": "aheasca",
+  "username": "admin",
   "password": "parola",
   "watch_folder": "./sample_images",
   "results_folder": "./results",

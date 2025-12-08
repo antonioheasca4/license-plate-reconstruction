@@ -1,14 +1,14 @@
 # Camera Client - Sample Images
 
-📸 Pune imagini cu plăcuțe de înmatriculare în acest folder.
+Put images with license plates in this folder.
 
-Când adaugi o imagine nouă, camera client o va detecta automat și o va trimite la server pentru procesare.
+When you add a new image, the client camera will automatically detect it and send it to the server for processing.
 
-## Formate Acceptate
+## Supported Formats
 - `.jpg` / `.jpeg`
 - `.png`
 
-## Exemplu
+## Example
 ```bash
 # Windows
 copy path\to\license_plate.jpg sample_images\
@@ -17,4 +17,4 @@ copy path\to\license_plate.jpg sample_images\
 cp path/to/license_plate.jpg sample_images/
 ```
 
-Camera client va procesa automat imaginea și va salva rezultatele în folderul `results/`.
+The client camera will automatically process the image and save the results in the `results/` folder.
