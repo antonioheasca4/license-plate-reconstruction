@@ -163,7 +163,7 @@ function History() {
                   onClick={() => deleteHistoryItem(item.id)}
                   title="Delete"
                 >
-                  🗑️
+                
                 </button>
               </div>
             </div>

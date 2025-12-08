@@ -39,7 +39,7 @@ const Dashboard = () => {
         <ImageUploader />
 
         <div className="info-card">
-          <h3>ℹ️ About License Plate Reconstruction</h3>
+          <h3> About License Plate Reconstruction</h3>
           <p>This system uses a Pix2Pix deep learning model to reconstruct and enhance license plate images.</p>
           <ul>
             <li>Upload a license plate image (degraded, blurry, or low quality)</li>

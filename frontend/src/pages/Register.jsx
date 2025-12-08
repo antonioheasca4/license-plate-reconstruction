@@ -88,7 +88,7 @@ const Register = () => {
               placeholder="e.g., john_doe123"
             />
             <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '4px', display: 'block' }}>
-              ⓘ Only letters, numbers, underscores (_), and hyphens (-). No @ or special characters.
+              Only letters, numbers, underscores (_), and hyphens (-). No @ or special characters.
             </small>
           </div>
 

@@ -374,7 +374,7 @@ const ImageUploader = () => {
 
   return (
     <div className="image-uploader-container">
-      <h3>🚗 License Plate Reconstruction</h3>
+      <h3> License Plate Reconstruction</h3>
 
       <div
         className={`upload-area ${dragOver ? 'drag-over' : ''}`}
@@ -409,7 +409,7 @@ const ImageUploader = () => {
           <img src={previewUrl} alt="Preview" className="preview-image" />
           <div>
             <button onClick={handleUpload} className="btn-upload">
-              🔄 Reconstruct Image
+              Reconstruct Image
             </button>
             <button onClick={handleReset} className="btn-secondary">
               Clear
@@ -428,7 +428,7 @@ const ImageUploader = () => {
 
       {reconstructedUrl && (
         <div className="results-section">
-          <h4>✨ Results:</h4>
+          <h4> Results:</h4>
           <div className="image-comparison">
             <div className="image-box">
               <h4>Original Image</h4>
@@ -438,7 +438,7 @@ const ImageUploader = () => {
                 className="btn-ocr"
                 disabled={ocrLoading}
               >
-                🔍 Run OCR
+                Run OCR
               </button>
               {ocrOriginal && (
                 <div className="ocr-result">
@@ -454,7 +454,7 @@ const ImageUploader = () => {
                 className="btn-ocr"
                 disabled={ocrLoading}
               >
-                🔍 Run OCR
+                Run OCR
               </button>
               {ocrReconstructed && (
                 <div className="ocr-result">
@@ -466,7 +466,7 @@ const ImageUploader = () => {
           {ocrLoading && <div className="ocr-loading">Running OCR...</div>}
           <div style={{ marginTop: '20px' }}>
             <button onClick={handleReset} className="btn-upload">
-              📤 Upload Another Image
+             Upload Another Image
             </button>
           </div>
         </div>
