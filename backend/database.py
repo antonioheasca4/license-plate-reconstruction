@@ -8,10 +8,7 @@ load_dotenv()
 
 # Database URL from environment variable
 # Using PostgreSQL with Docker
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://lpr_user:lpr_password@localhost:5432/lpr_database"
-)
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Create database engine
 # PostgreSQL configuration with connection pool

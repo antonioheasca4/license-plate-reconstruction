@@ -53,17 +53,17 @@ async def startup_event():
     # Load Pix2Pix model
     success = model_manager.load_model()
     if success:
-        logger.info("✓ Pix2Pix model loaded successfully!")
+        logger.info("Pix2Pix model loaded successfully!")
     else:
-        logger.warning("⚠ Pix2Pix model failed to load. Inference endpoint will not work.")
+        logger.warning("Pix2Pix model failed to load. Inference endpoint will not work.")
         logger.warning("Please ensure a .keras model file is present in the 'ml_models' directory.")
     
     # Load OCR model
     ocr_success = ocr_manager.load_model()
     if ocr_success:
-        logger.info("✓ OCR model loaded successfully!")
+        logger.info("OCR model loaded successfully!")
     else:
-        logger.warning("⚠ OCR model failed to load. OCR endpoint will not work.")
+        logger.warning("OCR model failed to load. OCR endpoint will not work.")
 
 
 @app.get("/")

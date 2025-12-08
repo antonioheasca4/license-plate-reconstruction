@@ -1,5 +1,5 @@
 """
-OCR Service - Wrapper pentru fast-plate-ocr LicensePlateRecognizer
+OCR Service - Wrapper for fast-plate-ocr LicensePlateRecognizer
 """
 import logging
 from typing import Optional
@@ -10,7 +10,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 class OCRManager:
-    """Singleton pentru gestionarea modelului OCR"""
+    """Singleton for managing the OCR model"""
     
     _instance = None
     _recognizer = None
@@ -23,9 +23,9 @@ class OCRManager:
     
     def load_model(self) -> bool:
         """
-        Încarcă modelul OCR la pornirea aplicației
+        Load the OCR model at application startup
         Returns:
-            bool: True dacă modelul a fost încărcat cu succes
+            bool: True if the model was loaded successfully
         """
         if self._recognizer is not None:
             logger.info("OCR model already loaded")
@@ -44,23 +44,23 @@ class OCRManager:
             return False
     
     def get_recognizer(self):
-        """Returnează recognizer-ul încărcat"""
+        """Return the loaded recognizer"""
         return self._recognizer
     
     def is_loaded(self) -> bool:
-        """Verifică dacă modelul este încărcat"""
+        """Check if the model is loaded"""
         return self._recognizer is not None
 
 
 def run_ocr(image_bytes: bytes) -> dict:
     """
-    Rulează OCR pe imaginea uploadată
+    Run OCR on the uploaded image
     
     Args:
-        image_bytes: Imaginea ca bytes
+        image_bytes: The image as bytes
     
     Returns:
-        dict: Rezultatul OCR cu text și confidence
+        dict: OCR result with text and confidence
     """
     manager = OCRManager()
     
@@ -70,18 +70,18 @@ def run_ocr(image_bytes: bytes) -> dict:
     recognizer = manager.get_recognizer()
     
     try:
-        # Convertește bytes la imagine PIL
+        # Convert bytes to PIL image
         logger.info("Running OCR on image...")
         image = Image.open(BytesIO(image_bytes))
         
-        # Convertește PIL Image la numpy array (așa cum așteaptă LicensePlateRecognizer)
+        # Convert PIL Image to numpy array (as expected by LicensePlateRecognizer)
         import numpy as np
         image_array = np.array(image)
         
-        # Rulează OCR pe numpy array
+        # Run OCR on numpy array
         result = recognizer.run(image_array)
         
-        # Curăță rezultatul: elimină underscore-uri
+        # Clean the result: remove underscores
         if isinstance(result, list) and len(result) > 0:
             cleaned_result = [text.replace('_', '') for text in result]
         else:
